@@ -1,0 +1,23 @@
+{
+  "name": "checkers.js",
+  "version": "0.0.1",
+  "description": "A javascript checkers library for move generation/validation, piece placement/movement and draw detection",
+  "main": "checkers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shubhendusaurabh/checkers.js.git"
+  },
+  "keywords": [
+    "checkers",
+    "draught"
+  ],
+  "author": "shubhu",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/shubhendusaurabh/checkers.js/issues"
+  },
+  "homepage": "https://github.com/shubhendusaurabh/checkers.js#readme"
+}
