@@ -21,7 +21,7 @@ var Checkers = function (fen) {
     PROMOTION: 'p'
   };
 
-  var board = new Array[128];
+  var board = new Array(128);
   var kings = {w: EMPTY, b: EMPTY};
   var turn = WHITE;
   var half_moves = 0;
@@ -38,7 +38,7 @@ var Checkers = function (fen) {
   function clear() {
     board = new Array(128);
     kings = {w: EMPTY, b: EMPTY};
-    turn WHITE;
+    turn = WHITE;
     half_moves = 0;
     move_number = 1;
     history = [];
@@ -72,10 +72,144 @@ var Checkers = function (fen) {
     return true;
   }
 
-  function validate_fen(fen) {
-    var errors = {
-      0: 'no errors',
-    };
+  function parse_fen(fen, dimension) {
+    if (!dimension) {
+      var dimension = 10;
+    }
+    fen_constants(dimension);
+
+    var squareCount = parseInt(dimension * dimension / 2);
+    var checkedFen = validate_fen(fen, squareCount);
+    if (!checkedFen.valid) {
+      console.error('Fen Error', fen);
+    }
+  }
+
+  function validate_fen(fen, squareCount) {
+    // var fenPattern = /^(W|B):(W|B)((?:K?\d*)(?:,K?\d+)*?)(?::(W|B)((?:K?\d*)(?:,K?\d+)*?))?$/;
+    var errors = [
+      {
+        code: 0,
+        message: 'no errors',
+      },
+      {
+        code: 1,
+        message: 'fen position not a string'
+      },
+      {
+        code: 2,
+        message: 'fen position has not colon at second position'
+      },
+      {
+        code: 3,
+        message: 'fen position has not 2 colons'
+      },
+      {
+        code: 4,
+        message: 'side to move of fen position not valid'
+      },
+      {
+        code: 5,
+        message: 'color(s) of sides of fen position not valid'
+      },
+      {
+        code: 6,
+        message: 'squares of fen position not integer'
+      },
+      {
+        code: 7,
+        message: 'squares of fen position not valid',
+      },
+      {
+        code: 8,
+        message: 'empty fen position'
+      }
+    ];
+
+    if (typeof fen !== 'string') {
+      return {valid: false, error: errors[0], fen: fen};
+    }
+
+    var fen = fen.replace(/\s+/g, '');
+
+    if (fen == 'B::' || fen == 'W::' || fen == '?::') {
+      return {valid: true}; // exception allowed i.e. empty fen
+    }
+
+    fen = fen.replace(/\..*$/, '');
+
+    if (fen === '') {
+      return {valid: false, error: errors[7], fen: fen};
+    }
+
+    if (fen.substr(1, 1) !== ':') {
+      return {valid: false, error: errors[1], fen: fen};
+    }
+
+    // fen should be 3 sections separated by colons
+    var parts = fen.split(':');
+    if (parts.length !== 3) {
+      return {valid: false, error: errors[2], fen: fen};
+    }
+
+    //  which side to move
+    var turnColor = parts[0];
+    if (turnColor !== 'B' && turnColor !== 'W' && turnColor !== '?') {
+      return {valid: false, error: errors[3], fen: fen};
+    }
+
+    // check colors of both sides
+    var colors = parts[1].substr(0, 1) + parts[2].substr(0, 1);
+    if (colors != 'BW' && colors != 'WB') {
+      return {valid: false, error: errors[4], fen: fen};
+    }
+
+    // check parts for both sides
+    for (var k = 1; k <= 2; k += 1) {
+      var sideString = parts[k].substr(1); // Stripping color
+      if (sideString.length === 0) {
+        continue;
+      }
+      var numbers = sideString.split(',');
+      for (var i = 0; i < numbers.length; i++) {
+        var numSquare = numbers[i];
+        var isKing = (numSquare.substr(0, 1) == 'K' ? true : false);
+        numSquare = (isKing == true ? numSquare.substr(1) : numSquare);
+        var range = numSquare.split('-');
+        if (range.length === 2) {
+          if (isInteger(range[0]) == false) {
+            console.log(isInteger(range[0]));
+            return {valid: false, error: errors[5], fen: fen, range: range[0]};
+          }
+          if (!(range[0] >= 1 && range[0] <= squareCount)) {
+            return {valid: false, error: errors[6], fen: fen};
+          }
+          if (isInteger(range[1]) == false) {
+            return {valid: false, error: errors[5], fen: fen};
+          }
+          if (!(range[1] >= 1 && range[1] <= squareCount)) {
+            return {valid: false, error: errors[6], fen: fen};
+          }
+        } else {
+          if (isInteger(numSquare) == false) {
+            return {valid: false, error: errors[5], fen: fen};
+          }
+          if (!(numSquare >= 1 && numSquare <= squareCount)) {
+            return {valid: false, error: errors[6], fen: fen};
+          }
+        }
+      }
+    }
+    // var turnColor = '';
+    // var whiteManPositions = [];
+    // var whiteKingPositions = [];
+    // var blackManPositions = [];
+    // var blackKingPositions = [];
+    //
+    // var m = fen.match(fenPattern);
+    // if (m) {
+    //   turnColor = m[1];
+    // }
 
     return {valid: true, error_number: 0, error: errors[0]};
   }
@@ -83,6 +217,8 @@ var Checkers = function (fen) {
   function generate_fen() {
     var empty = 0;
     var fen = '';
+    var cflags = '';
+    var move_number = '';
 
     return [fen, turn, cflags, move_number].join(' ');
   }
@@ -250,6 +386,15 @@ var Checkers = function (fen) {
     return '0123456789'.indexOf(c) !== -1;
   }
 
+  function isInteger(int) {
+    var regex = /^\d+$/;
+    if (regex.test(int)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   function make_pretty(ugly_move) {
     var move = clone(ugly_move);
     move.san = move_to_san(move);
@@ -331,13 +476,9 @@ var Checkers = function (fen) {
 
     },
 
-    validate_fen: function (fen) {
+    validate_fen: validate_fen,
 
-    },
-
-    fen: function () {
-      return generate_fen();
-    },
+    fen: generate_fen,
 
     pdn: function (options) {
 
