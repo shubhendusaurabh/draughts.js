@@ -1,8 +1,8 @@
 'use strict';
 
 var Checkers = function (fen) {
-  var BLACK = 'b';
-  var WHITE = 'w';
+  var BLACK = 'B';
+  var WHITE = 'W';
 
   var EMPTY = -1;
 
@@ -11,7 +11,7 @@ var Checkers = function (fen) {
 
   var SYMBOLS = 'mkMK';
 
-  var DEFAULT_POSITION = '8/8/8/8/8/8/8/8';
+  var DEFAULT_POSITION = 'B:B:W';
 
   var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*'];
 
@@ -21,7 +21,7 @@ var Checkers = function (fen) {
     PROMOTION: 'p'
   };
 
-  var board = new Array(128);
+  var board = new Array(100);
   var kings = {w: EMPTY, b: EMPTY};
   var turn = WHITE;
   var half_moves = 0;
@@ -36,7 +36,7 @@ var Checkers = function (fen) {
   }
 
   function clear() {
-    board = new Array(128);
+    board = new Array(100);
     kings = {w: EMPTY, b: EMPTY};
     turn = WHITE;
     half_moves = 0;
@@ -50,39 +50,65 @@ var Checkers = function (fen) {
     load(DEFAULT_POSITION);
   }
 
-  function load(fen) {
-    var tokens = fen.split(/\s+/);
-    var position = tokens[0];
-    var square = 0;
-
-    if (!validate_fen(fen).valid) {
-      return false;
-    }
-
-    clear();
-
-    for (var i = 0; i < position.length; i++) {
-      var piece = position.charAt(i);
-
-      if (piece === '/') {
-        square += 8;
-      }
-    }
-
-    return true;
-  }
-
-  function parse_fen(fen, dimension) {
+  function load(fen, dimension) {
     if (!dimension) {
       var dimension = 10;
     }
-    fen_constants(dimension);
+    // fen_constants(dimension); //TODO for empty fens
 
     var squareCount = parseInt(dimension * dimension / 2);
     var checkedFen = validate_fen(fen, squareCount);
     if (!checkedFen.valid) {
       console.error('Fen Error', fen);
     }
+
+    clear();
+
+    // remove spaces
+    fen = fen.replace(/\s+/g, '');
+    // remove suffixes
+    fen.replace(/\..*$/, '');
+
+    var tokens = fen.split(':');
+    // which side to move
+    turn = tokens[0].substr(0, 1);
+
+    var positions = new Array();
+    for (var i = 0; i <= squareCount; i++) {
+      positions[i] = '0';
+    }
+    positions[0] = turn;
+    // TODO refactor
+    for (var k = 1; k <= 2; k++) {
+      console.log(tokens);
+      var color = tokens[k].substr(0, 1);
+      var sideString = tokens[k].substr(1);
+      if (sideString.length == 0) continue;
+      var numbers = sideString.split(',');
+      for (var i = 0; i < numbers.length; i++) {
+        var numSquare = numbers[i];
+        var isKing = (numSquare.substr(0, 1) == 'K' ? true : false);
+        numSquare = (isKing == true ? numSquare.substr(1) : numSquare); //strip K
+        var range = numSquare.split('-');
+        if (range.length == 2) {
+          var from = parseInt(range[0]);
+          var to = parseInt(range[1]);
+          for (var j = from; j <= to; j++) {
+            positions[j] = (isKing == true ? color.toUpperCase() : color.toLowerCase());
+            put({type: color.toLowerCase(), color: color});
+          }
+        } else {
+          var numSquare = parseInt(numSquare);
+          positions[numSquare] = (isKing == true ? color.toUpperCase() : color.toLowerCase());
+          put({type: color.toLowerCase(), color: color});
+        }
+      }
+    }
+
+    // return positions.join('');
+    update_setup(generate_fen(positions));
+
+    return true;
   }
 
   function validate_fen(fen, squareCount) {
@@ -133,7 +159,7 @@ var Checkers = function (fen) {
     var fen = fen.replace(/\s+/g, '');
 
     if (fen == 'B::' || fen == 'W::' || fen == '?::') {
-      return {valid: true}; // exception allowed i.e. empty fen
+      return {valid: true, fen: fen+':B:W'}; // exception allowed i.e. empty fen
     }
 
     fen = fen.replace(/\..*$/, '');
@@ -224,8 +250,10 @@ var Checkers = function (fen) {
   }
 
   function set_header(args) {
-    for (var i = 0; i < args.length; i++) {
-      args[i] === 'string';
+    for (var i = 0; i < args.length; i += 2) {
+      if (typeof args[i] === 'string' && typeof args[i+1] === 'string') {
+        header[args[i]] = args[i+1];
+      }
     }
     return header;
   }
@@ -361,21 +389,6 @@ var Checkers = function (fen) {
     var piece = move.piece;
 
     var ambiguities = 0;
-    var same_rank = 0;
-    var same_file = 0;
-  }
-
-  function rank(i) {
-    return i >> 4;
-  }
-
-  function file(i) {
-    return i & 15;
-  }
-
-  function algebraic(i) {
-    var f = file(i), r = rank(i);
-    return 'abcdefgh'.substring(f, f+1) + '87654321'.substring(r, r+1);
   }
 
   function swap_color(c) {
@@ -397,9 +410,9 @@ var Checkers = function (fen) {
 
   function make_pretty(ugly_move) {
     var move = clone(ugly_move);
-    move.san = move_to_san(move);
-    move.to = algebraic(move.to);
-    move.from = algebraic(move.from);
+    // move.san = move_to_san(move);
+    // move.to = algebraic(move.to);
+    // move.from = algebraic(move.from);
 
     var flags = '';
 
