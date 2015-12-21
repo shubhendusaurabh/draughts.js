@@ -1,5 +1,27 @@
 'use strict';
 
+var sample = '';
+sample += '[Event "NK 2009, ronde 12, 17 april"]' + '\n';
+ sample += '[Site "nk2009.dvvbi.nl"]' + '\n';
+ sample += '[Date "17 april 2009"]' + '\n';
+ sample += '[Round "12"]' + '\n';
+ sample += '[White "Jeroen van den Akker"]' + '\n';
+ sample += '[Black "Roel Boomstra"]' + '\n';
+ sample += '[Result "1-1"]' + '\n';
+ sample += '  1. 32-28 17-22  2. 28x17 11x22  3. 37-32  6-11  4. 41-37 12-17  5. 46-41  8-12' + '\n';
+ sample += '  6. 34-29 19-23  7. 40-34 14-19  8. 45-40 10-14  9. 32-28 23x32 10. 37x28  5-10' + '\n';
+ sample += ' 11. 41-37 20-24 12. 29x20 15x24 13. 34-30 16-21 14. 31-26 11-16 15. 37-31  1-6 ' + '\n';
+ sample += ' 16. 40-34  7-11 17. 30-25  2-7  18. 34-30  3-8  19. 39-34 18-23 20. 47-41 23x32' + '\n';
+ sample += ' 21. 38x18 12x23 22. 34-29 23x34 23. 30x39  7-12 24. 43-38 19-23 25. 41-37 13-18' + '\n';
+ sample += ' 26. 37-32 24-29 27. 33x24 23-28 28. 32x23 18x20 29. 42-37 20-24 30. 37-32 12-18' + '\n';
+ sample += ' 31. 39-33  8-13 32. 49-43 18-22 33. 32-27 21x32 34. 38x18 13x22 35. 31-27 22x31' + '\n';
+ sample += ' 36. 26x37 14-19 37. 43-38 19-23 38. 48-42 10-14 39. 44-40  9-13 40. 40-34 23-28' + '\n';
+ sample += ' 41. 33x22 17x28 42. 50-44 11-17 43. 34-29 24x33 44. 38x29 16-21 45. 44-39 17-22' + '\n';
+ sample += ' 46. 42-38 21-27 47. 35-30  6-11 48. 30-24 11-17 49. 38-33 13-18 50. 37-31 28-32' + '\n';
+ sample += ' 51. 24-20 14-19 52. 29-24 19x30 53. 25x34 17-21 54. 33-28 22x44 55. 31x13 44-50' + '\n';
+ sample += ' 56. 13-8  32-38 57.  8-2  38-43 58. 20-14 43-48 59.  2-16 48x3  60. 16x32  3-26' + '\n';
+ sample += '1-1' + '\n' + '\n';
+
 var Checkers = function (fen) {
   var BLACK = 'B';
   var WHITE = 'W';
@@ -271,6 +293,42 @@ var Checkers = function (fen) {
     }
   }
 
+  function parsePDN(pdn, options) {
+    function mask(str) {
+      return str.replace(/\\/g, '\\');
+    }
+
+    var tagsPattern = /^\[\s*(\w*)\s*\"(.*?)\"\s*\]$/;
+    var movesPattern = /(?:(\d+)\.(?:\.\.|\s+\.\.\.)?)?\s*(\d+(?:[-x]\d+)+)([\!\?\*\(\)]*)\s+(?:\{([^}]*)\}){0,1}\s*(?:(\d+(?:[-x]\d+)+)([\!\?\*\(\)]*)\s+?(?:\{([^}]*)\}){0,1})?/g;
+    var gameTerminatePattern = /\s([012]\-[012]|1\/2\-1\/2|\*)\s/g;
+
+    var temp = pdn.trim() + " ";
+
+    var list = [];
+    var match;
+    var idxNextGame = 0;
+    var cpt = 0;
+    while ((match = gameTerminatePattern.exec(temp)) != null) {
+      console.log(match);
+      cpt += 1;
+      if (cpt > 200) {
+        break;
+      }
+      var idxStart = match.index;
+      var idxEnd = idxStart + match[0].length;
+
+      var map = {};
+      map['idxStartGame'] = "" + idxNextGame;
+      map['idxStartGameTermination'] = "" + idxStart;
+      map['idxEndGame'] = "" + idxEnd;
+      list.push(map);
+
+      idxNextGame = idxEnd;
+      console.log(idxNextGame, idxEnd);
+    }
+    console.log(list);
+  }
+
   function get(square) {
     var piece = board[SQUARES[square]];
     return (piece) ? {type: piece.type, color: piece.color} : null;
@@ -347,10 +405,6 @@ var Checkers = function (fen) {
     var single_square = false;
 
     var legal;
-  }
-
-  function move_to_san(move) {
-
   }
 
   function attacked(color, square) {
@@ -500,6 +554,8 @@ var Checkers = function (fen) {
     load_pdn: function (pdn, options) {
 
     },
+
+    parsePDN: parsePDN,
 
     header: function () {
       return set_header(arguments);
