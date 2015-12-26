@@ -8,20 +8,81 @@ sample += '[Event "NK 2009, ronde 12, 17 april"]' + '\n';
  sample += '[White "Jeroen van den Akker"]' + '\n';
  sample += '[Black "Roel Boomstra"]' + '\n';
  sample += '[Result "1-1"]' + '\n';
- sample += '  1. 32-28 17-22  2. 28x17 11x22  3. 37-32  6-11  4. 41-37 12-17  5. 46-41  8-12' + '\n';
- sample += '  6. 34-29 19-23  7. 40-34 14-19  8. 45-40 10-14  9. 32-28 23x32 10. 37x28  5-10' + '\n';
- sample += ' 11. 41-37 20-24 12. 29x20 15x24 13. 34-30 16-21 14. 31-26 11-16 15. 37-31  1-6 ' + '\n';
- sample += ' 16. 40-34  7-11 17. 30-25  2-7  18. 34-30  3-8  19. 39-34 18-23 20. 47-41 23x32' + '\n';
- sample += ' 21. 38x18 12x23 22. 34-29 23x34 23. 30x39  7-12 24. 43-38 19-23 25. 41-37 13-18' + '\n';
- sample += ' 26. 37-32 24-29 27. 33x24 23-28 28. 32x23 18x20 29. 42-37 20-24 30. 37-32 12-18' + '\n';
- sample += ' 31. 39-33  8-13 32. 49-43 18-22 33. 32-27 21x32 34. 38x18 13x22 35. 31-27 22x31' + '\n';
- sample += ' 36. 26x37 14-19 37. 43-38 19-23 38. 48-42 10-14 39. 44-40  9-13 40. 40-34 23-28' + '\n';
- sample += ' 41. 33x22 17x28 42. 50-44 11-17 43. 34-29 24x33 44. 38x29 16-21 45. 44-39 17-22' + '\n';
- sample += ' 46. 42-38 21-27 47. 35-30  6-11 48. 30-24 11-17 49. 38-33 13-18 50. 37-31 28-32' + '\n';
- sample += ' 51. 24-20 14-19 52. 29-24 19x30 53. 25x34 17-21 54. 33-28 22x44 55. 31x13 44-50' + '\n';
- sample += ' 56. 13-8  32-38 57.  8-2  38-43 58. 20-14 43-48 59.  2-16 48x3  60. 16x32  3-26' + '\n';
+ sample += '' + '\n';
+ sample += '1. 32-28 17-22  2. 28x17 11x22  3. 37-32  6-11  4. 41-37 12-17  5. 46-41  8-12' + '\n';
+ sample += '6. 34-29 19-23  7. 40-34 14-19  8. 45-40 10-14  9. 32-28 23x32 10. 37x28  5-10' + '\n';
+ sample += '11. 41-37 20-24 12. 29x20 15x24 13. 34-30 16-21 14. 31-26 11-16 15. 37-31  1-6 ' + '\n';
+ sample += '16. 40-34  7-11 17. 30-25  2-7  18. 34-30  3-8  19. 39-34 18-23 20. 47-41 23x32' + '\n';
+ sample += '21. 38x18 12x23 22. 34-29 23x34 23. 30x39  7-12 24. 43-38 19-23 25. 41-37 13-18' + '\n';
+ sample += '26. 37-32 24-29 27. 33x24 23-28 28. 32x23 18x20 29. 42-37 20-24 30. 37-32 12-18' + '\n';
+ sample += '31. 39-33  8-13 32. 49-43 18-22 33. 32-27 21x32 34. 38x18 13x22 35. 31-27 22x31' + '\n';
+ sample += '36. 26x37 14-19 37. 43-38 19-23 38. 48-42 10-14 39. 44-40  9-13 40. 40-34 23-28' + '\n';
+ sample += '41. 33x22 17x28 42. 50-44 11-17 43. 34-29 24x33 44. 38x29 16-21 45. 44-39 17-22' + '\n';
+ sample += '46. 42-38 21-27 47. 35-30  6-11 48. 30-24 11-17 49. 38-33 13-18 50. 37-31 28-32' + '\n';
+ sample += '51. 24-20 14-19 52. 29-24 19x30 53. 25x34 17-21 54. 33-28 22x44 55. 31x13 44-50' + '\n';
+ sample += '56. 13-8  32-38 57.  8-2  38-43 58. 20-14 43-48 59.  2-16 48x3  60. 16x32  3-26' + '\n';
  sample += '1-1' + '\n' + '\n';
 
+ /*
+ ||==================================================================================
+ || DESCRIPTION OF IMPLEMENTATION PRINCIPLES
+ || A. Position for rules (internal representation): string with length 56.
+ ||    Special numbering for easy applying rules.
+ ||    Valid characters: b B w W 0 -
+ ||       b (black) B (black king) w (white) W (white king) 0 (empty) (- unused)
+ ||    Examples:
+ ||      '-bbbBBB000w-wwWWWwwwww-bbbbbbbbbb-000wwwwwww-00bbbwwWW0-'
+ ||      '-0000000000-0000000000-0000000000-0000000000-0000000000-'  (empty position)
+ ||      '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-'  (start position)
+ || B. Position (external respresentation): string with length 51.
+ ||    Square numbers are represented by the position of the characters.
+ ||    Position 0 is reserved for the side to move (B or W)
+ ||    Valid characters: b B w W 0
+ ||       b (black) B (black king) w (white) W (white king) 0 (empty)
+ ||    Examples:
+ ||       'B00000000000000000000000000000000000000000000000000'  (empty position)
+ ||       'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww'  (start position)
+ ||       'WbbbbbbBbbbbb00bbbbb000000w0W00ww00wwwwww0wwwwwwwww'  (random position)
+ ||
+ || External numbering      Internal Numbering
+ || --------------------    --------------------
+ ||   01  02  03  04  05      01  02  03  04  05
+ || 06  07  08  09  10      06  07  08  09  10
+ ||   11  12  13  14  15      12  13  14  15  16
+ || 16  17  18  19  20      17  18  19  20  21
+ ||   21  22  23  24  25      23  24  25  26  27
+ || 26  27  28  29  30      28  29  30  31  32
+ ||   31  32  33  34  35      34  35  36  37  38
+ || 36  37  38  39  40      39  40  41  42  43
+ ||   41  42  43  44  45      45  46  47  48  49
+ || 46  47  48  49  50      50  51  52  53  54
+ || --------------------    --------------------
+ ||
+ || Internal numbering has fixed direction increments for easy applying rules:
+ ||   NW   NE         -5   -6
+ ||     \ /             \ /
+ ||     sQr     >>      sQr
+ ||     / \             / \
+ ||   SW   SE         +5   +6
+ ||
+ || DIRECTION-STRINGS
+ || Strings of variable length for each of four directions at one square.
+ || Each string represents the position in that direction.
+ || Directions: NE, SE, SW, NW (wind directions)
+ || Example for square 29 (internal number):
+ ||   NE: 29, 24, 19, 14, 09, 04     b00bb0
+ ||   SE: 35, 41, 47, 53             bww0
+ ||   SW: 34, 39                     b0
+ ||   NW: 23, 17                     bw
+ || CONVERSION internal to external representation of numbers.
+ ||   N: external number, values 1..50
+ ||   M: internal number, values 0..55 (invalid 0,11,22,33,44,55)
+ ||   Formulas:
+ ||   M = N + floor((N-1)/10)
+ ||   N = M - floor((M-1)/11)
+ ||
+ ||==================================================================================
+ */
 var Checkers = function (fen) {
   var BLACK = 'B';
   var WHITE = 'W';
@@ -248,16 +309,6 @@ var Checkers = function (fen) {
         }
       }
     }
-    // var turnColor = '';
-    // var whiteManPositions = [];
-    // var whiteKingPositions = [];
-    // var blackManPositions = [];
-    // var blackKingPositions = [];
-    //
-    // var m = fen.match(fenPattern);
-    // if (m) {
-    //   turnColor = m[1];
-    // }
 
     return {valid: true, error_number: 0, error: errors[0]};
   }
@@ -294,39 +345,105 @@ var Checkers = function (fen) {
   }
 
   function parsePDN(pdn, options) {
+    var newline_char = (typeof options === 'object' &&
+                          typeof options.newline_char === 'string') ?
+                          options.newline_char : '\r?\n';
+        var regex = new RegExp('^(\\[(.|' + mask(newline_char) + ')*\\])' +
+                               '(' + mask(newline_char) + ')*' +
+                               '1.(' + mask(newline_char) + '|.)*$', 'g');
+
     function mask(str) {
       return str.replace(/\\/g, '\\');
     }
 
-    var tagsPattern = /^\[\s*(\w*)\s*\"(.*?)\"\s*\]$/;
-    var movesPattern = /(?:(\d+)\.(?:\.\.|\s+\.\.\.)?)?\s*(\d+(?:[-x]\d+)+)([\!\?\*\(\)]*)\s+(?:\{([^}]*)\}){0,1}\s*(?:(\d+(?:[-x]\d+)+)([\!\?\*\(\)]*)\s+?(?:\{([^}]*)\}){0,1})?/g;
-    var gameTerminatePattern = /\s([012]\-[012]|1\/2\-1\/2|\*)\s/g;
+    function parsePDNHeader(header, options) {
+      var headerObj = {};
+      var headers = header.split(new RegExp(mask(newline_char)));
+      var key = '';
+      var value = '';
 
-    var temp = pdn.trim() + " ";
-
-    var list = [];
-    var match;
-    var idxNextGame = 0;
-    var cpt = 0;
-    while ((match = gameTerminatePattern.exec(temp)) != null) {
-      console.log(match);
-      cpt += 1;
-      if (cpt > 200) {
-        break;
+      for (var i = 0; i < headers.length; i++) {
+        key = headers[i].replace(/^\[([A-Z][A-Za-z]*)\s.*\]$/, '$1');
+        value = headers[i].replace(/^\[[A-Za-z]+\s"(.*)"\]$/, '$1');
+        if (trim(key).length > 0) {
+          headerObj[key] = value;
+        }
+        console.log(key, value);
       }
-      var idxStart = match.index;
-      var idxEnd = idxStart + match[0].length;
 
-      var map = {};
-      map['idxStartGame'] = "" + idxNextGame;
-      map['idxStartGameTermination'] = "" + idxStart;
-      map['idxEndGame'] = "" + idxEnd;
-      list.push(map);
-
-      idxNextGame = idxEnd;
-      console.log(idxNextGame, idxEnd);
+      return headerObj;
     }
-    console.log(list);
+
+    var headerString = pdn.replace(regex, '$1');
+    if (headerString[0] !== '[') {
+      headerString = '';
+    }
+
+    reset();
+
+    var headers = parsePDNHeader(headerString, options);
+    window.headers = headers;
+    for (var key in headers) {
+      set_header([key, headers[key]]);
+    }
+
+    if (headers['SetUp'] === '1') {
+      if (!(('FEN' in headers) && load(headers['FEN']))) {
+        return false;
+      }
+    }
+
+    /* delete header to get the moves */
+    var ms = pdn.replace(headerString, '').replace(new RegExp(mask(newline_char), 'g'), ' ');
+
+    /* delete comments */
+    ms = ms.replace(/(\{[^}]+\})+?/g, '');
+
+    /* delete recursive annotation variations */
+    var rav_regex = /(\([^\(\)]+\))+?/g
+    while (rav_regex.test(ms)) {
+      ms = ms.replace(rav_regex, '');
+    }
+
+    /* delete move numbers */
+    ms = ms.replace(/\d+\./g, '');
+
+    /* delete ... indicating black to move */
+    ms = ms.replace(/\.\.\./g, '');
+
+    /* trim and get array of moves */
+    var moves = trim(ms).split(new RegExp(/\s+/));
+
+    /* delete empty entries */
+    moves = moves.join(',').replace(/,,+/g, ',').split(',');
+
+    var move = '';
+    for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
+      console.log(moves[half_move]);
+      // move = get_move_obj(moves[half_move]);
+move = true;
+      if (!move) {
+        return false;
+      } else {
+        // move_move(move);
+      }
+    }
+
+    move = moves[moves.length - 1];
+    if (POSSIBLE_RESULTS.indexOf(move) > -1) {
+      if (has_keys(header) && typeof header.Result === 'undefined') {
+        set_header(['Result', move]);
+      }
+    } else {
+      move = get_move_obj(move);
+      if (!move) {
+        return false;
+      } else {
+        make_move(move);
+      }
+    }
+    console.log(moves);
+    return true;
   }
 
   function get(square) {
@@ -407,8 +524,77 @@ var Checkers = function (fen) {
     var legal;
   }
 
-  function attacked(color, square) {
+  function getLegalMoves(position) {
+    var manCaptures = captures(position);
+    var kingCaptures = captures(position);
 
+    if (manCaptures.length == 0 && kingCaptures == 0) {
+      var manMoves = getMoves(position);
+      var kingMoves = getMoves(position);
+      var legalMoves = [];
+      legalMoves = legalMoves.concat(manMoves, kingMoves);
+    } else {
+      var legalMoves = [];
+      legalMoves = legalMoves.concat(manCaptures, kingCaptures);
+      legalMoves = longestCapture(legalMoves);
+    }
+
+    return legalMoves;
+  }
+
+  function moves(position, index) {
+    var moves = [];
+    var pos = 0;
+    var color = position[index];
+    color = color.toLowerCase();
+    while (pos != -1) {
+      pos = position.indexOf(color, pos + 1);
+      if (pos != -1) {
+        var posFrom = pos;
+        tempMoves = movesAtSquare(posFrom, position);
+        moves = moves.concat(tempMoves);
+      }
+    }
+    return moves;
+  }
+
+  function movesAtSquare(square, position) {
+    var moves = [];
+    var posFrom = square;
+    var piece = position.charAt(posFrom);
+    switch (piece) {
+      case 'b':
+      case 'w':
+        var dirStrings = directionStrings(position, posFrom, 2);
+        for (var dir in dirStrings) {
+          var str = dirStrings[dir];
+
+          var matchArray = str.match(/^[bw]0/) //e.g. b0 w0
+          if (matchArray != null && validDir(piece, dir) == true) {
+            var posTo = posFrom + STEPS[dir];
+            var moveObject = {jumps: [posFrom, posTo], takes: []};
+            moves.push(moveObject);
+          }
+        }
+        break;
+      case 'W':
+      case 'B':
+        var dirStrings = directionStrings(position, posFrom);
+        for (var dir in dirStrings) {
+          var str = dirStrings[dir];
+
+          var matchArray = str.match(/^[BW]0/) //e.g. B000, W0
+          if (matchArray != null) {
+            for (var i = 0; i < matchArray[0].length; i++) {
+              var posTo = posFrom + (k * STEPS[dir]);
+              var moveObject = {jumps: [posFrom, posTo], takes: []};
+              moves.push(moveObject);
+            }
+          }
+        }
+      default:
+        return moves;
+    }
   }
 
   function push(move) {
@@ -461,6 +647,82 @@ var Checkers = function (fen) {
       return false;
     }
   }
+
+  function longestCapture(captures) {
+    var maxJumpCount = 0;
+    for (var i = 0; i < captures.length; i++) {
+      var jumpCount = captures[i].jumps.length;
+      if (jumpCount > maxJumpCount) {
+        maxJumpCount = jumpCount;
+      }
+    }
+
+    var selectedCaptures = [];
+    if (maxJumpCount < 2) {
+      return selectedCaptures;
+    }
+
+    for (var i = 0; i < captures.length; i++) {
+      if (captures[i].jumps.length == maxJumpCount) {
+        selectedCaptures.push(captures[i]);
+      }
+    }
+
+    return selectedCaptures;
+  }
+
+  function outsideBoard(square) {
+    var num = parseInt(square);
+    if (n >= 0 && n <= 55 && (n%11) != 0) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  function directionStrings(position, square, maxLength) {
+    // Create direction strings for square at position (internal representation)
+    // Output object with four directions as properties (four rhumbs).
+    // Each property has a string as value representing the pieces in that direction.
+    // Piece of the given square is part of each string.
+    // Example of output: {NE: 'b0', SE: 'b00wb00', SW: 'bbb00', NW: 'bb'}
+    // Strings have maximum length of given maxLength.
+    if (arguments.length == 2) {
+      var maxLength = 100;
+    }
+
+    var dirStrings = {};
+    if (outsideBoard(square) == true) {
+      return 334;
+    }
+
+    for (var dir in STEPS) {
+      var dirArray = [];
+      var i = 0;
+      do {
+        dirArray[i] = position.charAt(square + i * STEPS[d]);
+        i++;
+        var index = square + i * STEPS[d];
+        var outside = outsideBoard(square + i * STEPS[d]);
+      } while (outside == false && i < maxLength);
+
+      dirStrings[d] = dirArray.join('');
+    }
+
+    return dirStrings;
+  }
+
+  function oppositeDir(direction) {
+    var opposite = {NE: 'SW', SE: 'NW', SW: 'NE', NW: 'SE'};
+    return opposite[direction];
+  }
+
+  function validDir(piece, dir) {
+    var validDirs = {};
+    validDirs.w = {NE: true,  SE: false, SW: false, NW: true};
+    validDirs.b = {NE: false, SE: true,  SW: true,  NW: false};
+    return validDirs[piece][dir];
+}
 
   function make_pretty(ugly_move) {
     var move = clone(ugly_move);
@@ -572,6 +834,10 @@ var Checkers = function (fen) {
     move: function move(move) {
 
     },
+
+    moves: moves,
+
+    getLegalMoves: getLegalMoves,
 
     undo: function () {
       var move = undo_move();
