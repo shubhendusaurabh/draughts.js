@@ -94,7 +94,10 @@ var Checkers = function (fen) {
 
   var SYMBOLS = 'mkMK';
 
-  var DEFAULT_POSITION = 'B:B:W';
+  var DEFAULT_FEN = 'B:B:W';
+
+  var DEFAULT_POSITION_INTERNAL = '-0000000000-0000000000-0000000000-0000000000-0000000000-';
+  var DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww';
 
   var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*'];
 
@@ -104,7 +107,13 @@ var Checkers = function (fen) {
     PROMOTION: 'p'
   };
 
-  var board = new Array(100);
+  var BITS = {
+    NORMAL: 1,
+    CAPTURE: 2,
+    PROMOTION: 3
+  };
+
+  var board = [];
   var kings = {w: EMPTY, b: EMPTY};
   var turn = WHITE;
   var half_moves = 0;
@@ -113,13 +122,13 @@ var Checkers = function (fen) {
   var header = {};
 
   if (!fen) {
-    load(DEFAULT_POSITION);
+    load(DEFAULT_FEN);
   } else {
     load(fen);
   }
 
   function clear() {
-    board = new Array(100);
+    board = [];
     kings = {w: EMPTY, b: EMPTY};
     turn = WHITE;
     half_moves = 0;
@@ -130,7 +139,7 @@ var Checkers = function (fen) {
   }
 
   function reset() {
-    load(DEFAULT_POSITION);
+    load(DEFAULT_FEN);
   }
 
   function load(fen, dimension) {
@@ -335,7 +344,7 @@ var Checkers = function (fen) {
     if (history.length > 0) {
       return false;
     }
-    if (fen != DEFAULT_POSITION) {
+    if (fen != DEFAULT_FEN) {
       header['SetUp'] = '1';
       header['FEN'] = fen;
     } else {
@@ -382,7 +391,7 @@ var Checkers = function (fen) {
     reset();
 
     var headers = parsePDNHeader(headerString, options);
-    window.headers = headers;
+
     for (var key in headers) {
       set_header([key, headers[key]]);
     }
@@ -419,31 +428,58 @@ var Checkers = function (fen) {
 
     var move = '';
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
-      console.log(moves[half_move]);
-      // move = get_move_obj(moves[half_move]);
-move = true;
+      move = getMoveObject(moves[half_move]);
       if (!move) {
         return false;
       } else {
-        // move_move(move);
+        makeMove(move);
       }
     }
 
-    move = moves[moves.length - 1];
-    if (POSSIBLE_RESULTS.indexOf(move) > -1) {
+    var result = moves[moves.length - 1];
+    if (POSSIBLE_RESULTS.indexOf(result) > -1) {
       if (has_keys(header) && typeof header.Result === 'undefined') {
-        set_header(['Result', move]);
+        set_header(['Result', result]);
       }
     } else {
-      move = get_move_obj(move);
+      move = getMoveObject(result);
       if (!move) {
         return false;
       } else {
-        make_move(move);
+        makeMove(move);
       }
     }
     console.log(moves);
     return true;
+  }
+
+  function getMoveObject(move) {
+    return true;
+  }
+
+  function makeMove(move) {
+    var us = turn;
+    var them = swap_color(us);
+    push(move);
+    board[move.to] = board[move.from];
+    board[move.from] = null;
+
+    if (move.flags & BITS.CAPTURE) {
+      if (turn == BLACK) {
+        board[move.to - 1] = 0;
+      } else {
+        board[move.to + 1] = 0;
+      }
+    }
+
+    if (move.flags & BITS.PROMOTION) {
+      board[move.to] = {type: move.promotion, color: us};
+    }
+
+    if (turn == BLACK) {
+      move_number += 1;
+    }
+    turn = swap_color(turn);
   }
 
   function get(square) {
@@ -506,10 +542,11 @@ move = true;
 
   function generate_moves(options) {
     function add_move(board, moves, from, to, flags) {
-      if (true) {
-
+      // handle promotion
+      if ((board[from] == 'b' || board[from] == 'w') && to == 1) {
+        moves.push(build_move(board, from, to, flags, piece.toUpperCase()));
       } else {
-
+        moves.push(build_move(board, from, to, flags));
       }
     }
 
@@ -522,11 +559,13 @@ move = true;
     var single_square = false;
 
     var legal;
+
+    moves = getLegalMoves();
   }
 
   function getLegalMoves(position) {
-    var manCaptures = captures(position);
-    var kingCaptures = captures(position);
+    var manCaptures = getCaptures(position);
+    var kingCaptures = getCaptures(position);
 
     if (manCaptures.length == 0 && kingCaptures == 0) {
       var manMoves = getMoves(position);
@@ -542,7 +581,7 @@ move = true;
     return legalMoves;
   }
 
-  function moves(position, index) {
+  function getMoves(position, index) {
     var moves = [];
     var pos = 0;
     var color = position[index];
@@ -597,21 +636,117 @@ move = true;
     }
   }
 
+  function getCaptures(position, index) {
+    var captures = [];
+    var pos = 0;
+    var color = position[index];
+    color = color.toLowerCase();
+    while (pos != -1) {
+      pos = position.indexOf(color, pos + 1);
+      if (pos != -1) {
+        var posFrom = pos;
+        var state = {position: position, dirFrom: ''};
+        var capture = {jumps: [], takes: []};
+        capture.jumps[0] = posFrom;
+        var tempCaptures = capturesAtSquare(posFrom, state, capture);
+        captures = captures.concat(tempCaptures);
+      }
+    }
+    captures = longestCapture(captures);
+    return captures;
+  }
+
+  function capturesAtSquare(posFrom, state, capture) {
+    var piece = state.position.charAt(posFrom);
+    if (piece != 'b' && piece != 'w' && piece != 'B' && piece != 'W') {
+      return [capture];
+    }
+    if (piece == 'b' || piece == 'w') {
+      var dirString = directionStrings(state.position, posFrom, 3);
+    } else {
+      var dirString = directionStrings(state.position, posFrom);
+    }
+
+    var finished = true;
+    var captureArrayForDir = {};
+    for (var dir in dirString) {
+      if (dir == state.dirFrom) {
+        continue;
+      }
+      var str = dirString[dir];
+      switch (piece) {
+        case 'b':
+        case 'w':
+          var matchArray = str.match(/^b[wW]0|^w[bB]0/); //matches: bw0, bW0, wB0, wb0
+          if (matchArray != null) {
+            var posTo = posFrom + (2 * STEPS[dir]);
+            var posTake = posFrom + (1 * STEPS[dir]);
+            if (capture.takes.indexOf(posTake) > -1) {
+              continue; //capturing twice forbidden
+            }
+            var updateCapture = clone(capture);
+            updateCapture.jumps.push(posTo);
+            updateCapture.jumps.push(posTake);
+
+            var updateState = clone(capture);
+            updateState.dirFrom = oppositeDir(dir);
+            var pieceCode = updateState.position.charAt(posFrom);
+            updateState.position = updateState.position.setCharAt(posFrom, '0');
+            updateState.position = updateState.position.setCharAt(posTo, pieceCode);
+            finished = false;
+            captureArrayForDir[dir] = capturesAtSquare(posTo, updateState, updateCapture);
+          }
+          break;
+        case 'B':
+        case 'W':
+          var matchArray = str.match(/^B0*[wW]0+|^W0*[bB]0+/);  // matches: B00w000, WB00
+          if (matchArray != null) {
+            var matchStr = matchArray[0];
+            var matchArraySubstr = match_str.match(/[wW]0+$|[bB]0+$/);  // matches: w000, B00
+            var matchSubstr = matchArraySubstr[0];
+            var takeIndex = matchStr.length - matchSubstr.length;
+            var posTake = posFrom + (takeIndex * STEPS[dir]);
+            if (capture.takes.indexOf(posTake) > -1) {
+              continue;
+            }
+            for (var i = 0; i < matchSubstr.length; i++) {
+              var posTo = posFrom + ((takeIndex + k) * STEPS[dir]);
+              var updateCapture = clone(capture);
+              updateCapture.jumps.push(posTo);
+              updateCapture.takes.push(posTake);
+
+              var updateState = clone(state);
+              updateState.dirFrom = oppositeDir(dir);
+              var pieceCode = updateState.position.charAt(posFrom);
+              updateState.position = updateState.position.setCharAt(posFrom, '0');
+              updateState.position = updateState.position.setCharAt(posTo, pieceCode);
+              finished = false;
+              var dirIndex = dir + i.toString();
+              captureArrayForDir[dirIndex] = capturesAtSquare(posTo, updateState, updateCapture);
+            }
+          }
+          break;
+        default:
+          var captureArrayForDir = [];
+      }
+    }
+    var captureArray = [];
+    if (finished == true) {
+      captureArray[0] = capture;
+    } else {
+      for (var dir in captureArrayForDir) {
+        captureArray = captureArray.concat(captureArrayForDir);
+      }
+    }
+    return captureArray;
+  }
+
   function push(move) {
     history.push({
       move: move,
       turn: turn,
       move_number: move_number
     });
-  }
-
-  function make_move(move) {
-    var us = turn;
-    var them = swap_color(us);
-    push(move);
-
-    board[move.to] = board[move.from];
-    board[move.from] = null;
   }
 
   function undo_move() {
@@ -669,6 +804,63 @@ move = true;
     }
 
     return selectedCaptures;
+  }
+
+  function convertMoves(moves, type) {
+    var tempMoves = [];
+    if (!type) {
+      return tempMoves;
+    }
+    for (var i = 0; i < moves.length; i++) {
+      var moveObject = {jumps: [], takes: []};
+      for (var j = 0; j < moves[i].jumps.length; j++) {
+        moveObject.jumps[j] = convertNumber(moves[i].jumps[j], type);
+      }
+      for (var j = 0; j < moves[i].takes.length; j++) {
+        moveObject.takes[j] = convertNumber(moves[i].takes[j], type);
+      }
+      tempMoves.push(moveObject);
+    }
+    return tempMoves;
+  }
+
+  function convertNumber(number, notation) {
+    var num = parseInt(number);
+    switch (notation) {
+      case 'internal':
+        var result = num + Math.floor((num - 1) / 10);
+        break;
+      case 'external':
+        var result = num - Math.floor((num - 1) / 11);
+        break;
+      default:
+        var result = num;
+        return result;
+    }
+  }
+
+  function convertPosition(position, notation) {
+    switch (notation) {
+      case 'internal':
+        var sub1 = position.substr(1, 10);
+        var sub2 = position.substr(11, 10);
+        var sub3 = position.substr(21, 10);
+        var sub4 = position.substr(31, 10);
+        var sub5 = position.substr(41, 10);
+        var newPosition = '-' + sub1 + '-' + sub2 + '-' + sub3 + '-' + sub4 + '-' + sub5 + '-';
+        break;
+      case 'external':
+        var sub1 = position.substr(1, 10);
+        var sub2 = position.substr(12, 10);
+        var sub3 = position.substr(23, 10);
+        var sub4 = position.substr(34, 10);
+        var sub5 = position.substr(45, 10);
+        var newPosition = '?' + sub1 + sub2 + sub3 + sub4 + sub5;
+        break;
+      default:
+        var newPosition = position;
+    }
+    return newPosition;
   }
 
   function outsideBoard(square) {
@@ -766,7 +958,7 @@ move = true;
     var color = turn;
 
     for (var i = 0; i < moves.length; i++) {
-      make_move(moves[i]);
+      makeMove(moves[i]);
       if (!king_attacked(color)) {
         if (depth - 1 > 0) {
           var child_nodes = perft(depth - 1);
@@ -835,7 +1027,7 @@ move = true;
 
     },
 
-    moves: moves,
+    getMoves: getMoves,
 
     getLegalMoves: getLegalMoves,
 
