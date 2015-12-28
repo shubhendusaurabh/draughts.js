@@ -96,7 +96,8 @@ var Checkers = function (fen) {
 
   var DEFAULT_FEN = 'B:B:W';
 
-  var DEFAULT_POSITION_INTERNAL = '-0000000000-0000000000-0000000000-0000000000-0000000000-';
+  var position;
+  var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-';
   var DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww';
 
   var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*'];
@@ -370,6 +371,7 @@ var Checkers = function (fen) {
       var headers = header.split(new RegExp(mask(newline_char)));
       var key = '';
       var value = '';
+      position = DEFAULT_POSITION_INTERNAL;
 
       for (var i = 0; i < headers.length; i++) {
         key = headers[i].replace(/^\[([A-Z][A-Za-z]*)\s.*\]$/, '$1');
@@ -454,7 +456,24 @@ var Checkers = function (fen) {
   }
 
   function getMoveObject(move) {
-    return true;
+    console.log(move);
+    var tempMove = {};
+    var matches = move.split(/[x|-]/);
+    tempMove.from = matches[0];
+    tempMove.to = matches[1];
+    var moveType = move.match(/[x|-]/);
+    if (moveType == '-') {
+      tempMove.flags = FLAGS.NORMAL
+    } else {
+      moveType.flags = FLAGS.CAPTURE;
+    }
+    var moves = getLegalMoves(tempMove.from);
+    for (var move in moves) {
+      if (move == move) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function makeMove(move) {
@@ -540,7 +559,7 @@ var Checkers = function (fen) {
     return move;
   }
 
-  function generate_moves(options) {
+  function generate_moves(move, options) {
     function add_move(board, moves, from, to, flags) {
       // handle promotion
       if ((board[from] == 'b' || board[from] == 'w') && to == 1) {
@@ -560,48 +579,53 @@ var Checkers = function (fen) {
 
     var legal;
 
-    moves = getLegalMoves();
+    moves = getLegalMoves(move.from);
   }
 
-  function getLegalMoves(position) {
-    var manCaptures = getCaptures(position);
-    var kingCaptures = getCaptures(position);
-
-    if (manCaptures.length == 0 && kingCaptures == 0) {
-      var manMoves = getMoves(position);
-      var kingMoves = getMoves(position);
+  function getLegalMoves(index) {
+    // var captures = getCaptures(index);
+    // var kingCaptures = getCaptures(index);
+    var captures = getCaptures(index);
+    // if (manCaptures.length == 0 && kingCaptures == 0) {
+    if (captures == 0) {
+      var manMoves = getMoves(index);
+      var kingMoves = getMoves(index);
       var legalMoves = [];
       legalMoves = legalMoves.concat(manMoves, kingMoves);
     } else {
-      var legalMoves = [];
-      legalMoves = legalMoves.concat(manCaptures, kingCaptures);
+      var legalMoves = captures;
+      // legalMoves = legalMoves.concat(manCaptures, kingCaptures);
       legalMoves = longestCapture(legalMoves);
     }
 
     return legalMoves;
   }
 
-  function getMoves(position, index) {
+  function getMoves(index) {
     var moves = [];
     var pos = 0;
     var color = position[index];
     color = color.toLowerCase();
+    console.log(index, color);
     while (pos != -1) {
       pos = position.indexOf(color, pos + 1);
+      console.log(pos, color);
       if (pos != -1) {
         var posFrom = pos;
-        tempMoves = movesAtSquare(posFrom, position);
+        var tempMoves = movesAtSquare(posFrom, position);
         moves = moves.concat(tempMoves);
       }
     }
+    console.log(moves);
     return moves;
   }
 
-  function movesAtSquare(square, position) {
+  function movesAtSquare(square) {
     var moves = [];
     var posFrom = square;
     var piece = position.charAt(posFrom);
-    switch (piece) {
+    console.log(piece);
+    switch ('piece', piece, posFrom) {
       case 'b':
       case 'w':
         var dirStrings = directionStrings(position, posFrom, 2);
@@ -636,10 +660,11 @@ var Checkers = function (fen) {
     }
   }
 
-  function getCaptures(position, index) {
+  function getCaptures(index) {
     var captures = [];
     var pos = 0;
     var color = position[index];
+    console.log(position, index);
     color = color.toLowerCase();
     while (pos != -1) {
       pos = position.indexOf(color, pos + 1);
