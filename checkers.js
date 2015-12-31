@@ -89,16 +89,17 @@ var Checkers = function (fen) {
 
   var EMPTY = -1;
 
-  var MAN = 'm';
-  var KING = 'k';
+  var MAN = 'b';
+  var KING = 'w';
 
-  var SYMBOLS = 'mkMK';
+  var SYMBOLS = 'bwBW';
 
   var DEFAULT_FEN = 'B:B:W';
 
-  var position;
+  var position = '';
   var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-';
   var DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww';
+  var STEPS = {NE: -5, SE: 6, SW: 5, NW: -6};
 
   var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*'];
 
@@ -173,7 +174,8 @@ var Checkers = function (fen) {
     positions[0] = turn;
     // TODO refactor
     for (var k = 1; k <= 2; k++) {
-      console.log(tokens);
+      // TODO called twide
+      // console.log(tokens);
       var color = tokens[k].substr(0, 1);
       var sideString = tokens[k].substr(1);
       if (sideString.length == 0) continue;
@@ -379,7 +381,7 @@ var Checkers = function (fen) {
         if (trim(key).length > 0) {
           headerObj[key] = value;
         }
-        console.log(key, value);
+        // console.log(key, value);
       }
 
       return headerObj;
@@ -435,6 +437,7 @@ var Checkers = function (fen) {
         return false;
       } else {
         makeMove(move);
+        console.log('move made\n');
       }
     }
 
@@ -456,7 +459,7 @@ var Checkers = function (fen) {
   }
 
   function getMoveObject(move) {
-    console.log(move);
+    console.log('getting object for', move);
     var tempMove = {};
     var matches = move.split(/[x|-]/);
     tempMove.from = matches[0];
@@ -467,10 +470,15 @@ var Checkers = function (fen) {
     } else {
       moveType.flags = FLAGS.CAPTURE;
     }
+    // console.log('calling legal moves');
     var moves = getLegalMoves(tempMove.from);
-    for (var move in moves) {
-      if (move == move) {
-        return true;
+    // console.log(moves);
+    // if move legal then make move
+    for (var i = 0; i < moves.length; i += 1) {
+      console.log(tempMove.to, convertNumber(moves[i].to, 'external'), 'is valid ?');
+      if (tempMove.to == convertNumber(moves[i].to, 'external')) {
+
+        return tempMove;
       }
     }
     return false;
@@ -479,9 +487,11 @@ var Checkers = function (fen) {
   function makeMove(move) {
     var us = turn;
     var them = swap_color(us);
+    console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')));
     push(move);
-    board[move.to] = board[move.from];
-    board[move.from] = null;
+    position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')));
+    position = position.setCharAt(convertNumber(move.from, 'internal'), 0);
+    console.log(position, 'makeMove');
 
     if (move.flags & BITS.CAPTURE) {
       if (turn == BLACK) {
@@ -585,19 +595,33 @@ var Checkers = function (fen) {
   function getLegalMoves(index) {
     // var captures = getCaptures(index);
     // var kingCaptures = getCaptures(index);
-    var captures = getCaptures(index);
-    // if (manCaptures.length == 0 && kingCaptures == 0) {
-    if (captures == 0) {
-      var manMoves = getMoves(index);
-      var kingMoves = getMoves(index);
-      var legalMoves = [];
-      legalMoves = legalMoves.concat(manMoves, kingMoves);
-    } else {
-      var legalMoves = captures;
-      // legalMoves = legalMoves.concat(manCaptures, kingCaptures);
-      legalMoves = longestCapture(legalMoves);
-    }
+    var legalMoves;
+    if (index) {
 
+      var index = convertNumber(index, 'internal')
+
+      var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: []});
+      // if (manCaptures.length == 0 && kingCaptures == 0) {
+      console.log(captures);
+      captures = longestCapture(captures);
+      legalMoves = captures;
+      console.log(index, 'captures', captures);
+      if (captures == 0) {
+        // console.log('captures 0');
+        legalMoves = movesAtSquare(index);
+        // var manMoves = getMoves(index);
+        // var kingMoves = getMoves(index);
+        // var legalMoves = [];
+        // legalMoves = legalMoves.concat(manMoves, kingMoves);
+      }
+      // else {
+      //   var legalMoves = captures;
+        // legalMoves = legalMoves.concat(manCaptures, kingCaptures);
+      //   console.log('elses', captures);
+      //   legalMoves = longestCapture(legalMoves);
+      // }
+    }
+    console.log(legalMoves);
     return legalMoves;
   }
 
@@ -606,17 +630,17 @@ var Checkers = function (fen) {
     var pos = 0;
     var color = position[index];
     color = color.toLowerCase();
-    console.log(index, color);
+    console.log(index, color, 'movesfetching');
     while (pos != -1) {
       pos = position.indexOf(color, pos + 1);
-      console.log(pos, color);
+      // console.log(pos, color);
       if (pos != -1) {
         var posFrom = pos;
         var tempMoves = movesAtSquare(posFrom, position);
         moves = moves.concat(tempMoves);
       }
     }
-    console.log(moves);
+    console.log(moves, 'fetched');
     return moves;
   }
 
@@ -624,25 +648,28 @@ var Checkers = function (fen) {
     var moves = [];
     var posFrom = square;
     var piece = position.charAt(posFrom);
-    console.log(piece);
-    switch ('piece', piece, posFrom) {
+    console.log(piece, square, 'movesAtSquare');
+    switch (piece) {
       case 'b':
       case 'w':
         var dirStrings = directionStrings(position, posFrom, 2);
+        console.log(dirStrings);
         for (var dir in dirStrings) {
           var str = dirStrings[dir];
 
           var matchArray = str.match(/^[bw]0/) //e.g. b0 w0
           if (matchArray != null && validDir(piece, dir) == true) {
             var posTo = posFrom + STEPS[dir];
-            var moveObject = {jumps: [posFrom, posTo], takes: []};
+            var moveObject = {from: posFrom, to: posTo, takes: []};
             moves.push(moveObject);
+            // console.log(moves);
           }
+          console.log(dir, matchArray, str, 'probing moves');
         }
         break;
       case 'W':
       case 'B':
-        var dirStrings = directionStrings(position, posFrom);
+        var dirStrings = directionStrings(posFrom);
         for (var dir in dirStrings) {
           var str = dirStrings[dir];
 
@@ -658,14 +685,15 @@ var Checkers = function (fen) {
       default:
         return moves;
     }
+    return moves;
   }
 
   function getCaptures(index) {
     var captures = [];
     var pos = 0;
     var color = position[index];
-    console.log(position, index);
-    color = color.toLowerCase();
+    console.log('getting capture',position, index);
+    // color = color.toLowerCase();
     while (pos != -1) {
       pos = position.indexOf(color, pos + 1);
       if (pos != -1) {
@@ -673,7 +701,8 @@ var Checkers = function (fen) {
         var state = {position: position, dirFrom: ''};
         var capture = {jumps: [], takes: []};
         capture.jumps[0] = posFrom;
-        var tempCaptures = capturesAtSquare(posFrom, state, capture);
+        console.log(posFrom, state, capture);
+        var tempCaptures = capturesAtSquare(pos, state, capture);
         captures = captures.concat(tempCaptures);
       }
     }
@@ -682,7 +711,9 @@ var Checkers = function (fen) {
   }
 
   function capturesAtSquare(posFrom, state, capture) {
+    console.log(posFrom, state, capture, 'gettting captures');
     var piece = state.position.charAt(posFrom);
+    // console.log(piece);
     if (piece != 'b' && piece != 'w' && piece != 'B' && piece != 'W') {
       return [capture];
     }
@@ -691,7 +722,7 @@ var Checkers = function (fen) {
     } else {
       var dirString = directionStrings(state.position, posFrom);
     }
-
+console.log(piece, dirString);
     var finished = true;
     var captureArrayForDir = {};
     for (var dir in dirString) {
@@ -711,9 +742,9 @@ var Checkers = function (fen) {
             }
             var updateCapture = clone(capture);
             updateCapture.jumps.push(posTo);
-            updateCapture.jumps.push(posTake);
+            updateCapture.takes.push(posTake);
 
-            var updateState = clone(capture);
+            var updateState = clone(state);
             updateState.dirFrom = oppositeDir(dir);
             var pieceCode = updateState.position.charAt(posFrom);
             updateState.position = updateState.position.setCharAt(posFrom, '0');
@@ -760,7 +791,7 @@ var Checkers = function (fen) {
       captureArray[0] = capture;
     } else {
       for (var dir in captureArrayForDir) {
-        captureArray = captureArray.concat(captureArrayForDir);
+        captureArray = captureArray.concat(captureArrayForDir[dir]);
       }
     }
     return captureArray;
@@ -811,6 +842,7 @@ var Checkers = function (fen) {
   function longestCapture(captures) {
     var maxJumpCount = 0;
     for (var i = 0; i < captures.length; i++) {
+      console.log(captures[i]);
       var jumpCount = captures[i].jumps.length;
       if (jumpCount > maxJumpCount) {
         maxJumpCount = jumpCount;
@@ -860,8 +892,8 @@ var Checkers = function (fen) {
         break;
       default:
         var result = num;
-        return result;
     }
+    return result;
   }
 
   function convertPosition(position, notation) {
@@ -889,15 +921,18 @@ var Checkers = function (fen) {
   }
 
   function outsideBoard(square) {
-    var num = parseInt(square);
+    // internal notation only
+    var n = parseInt(square);
     if (n >= 0 && n <= 55 && (n%11) != 0) {
+      // console.log('inside', n);
       return false;
     } else {
+      // console.log('outside', n);
       return true;
     }
   }
 
-  function directionStrings(position, square, maxLength) {
+  function directionStrings(tempPosition, square, maxLength) {
     // Create direction strings for square at position (internal representation)
     // Output object with four directions as properties (four rhumbs).
     // Each property has a string as value representing the pieces in that direction.
@@ -907,7 +942,7 @@ var Checkers = function (fen) {
     if (arguments.length == 2) {
       var maxLength = 100;
     }
-
+console.log(tempPosition, square, maxLength);
     var dirStrings = {};
     if (outsideBoard(square) == true) {
       return 334;
@@ -917,13 +952,13 @@ var Checkers = function (fen) {
       var dirArray = [];
       var i = 0;
       do {
-        dirArray[i] = position.charAt(square + i * STEPS[d]);
+        dirArray[i] = tempPosition.charAt(square + i * STEPS[dir]);
         i++;
-        var index = square + i * STEPS[d];
-        var outside = outsideBoard(square + i * STEPS[d]);
+        var index = square + i * STEPS[dir];
+        var outside = outsideBoard(square + i * STEPS[dir]);
       } while (outside == false && i < maxLength);
 
-      dirStrings[d] = dirArray.join('');
+      dirStrings[dir] = dirArray.join('');
     }
 
     return dirStrings;
@@ -960,16 +995,17 @@ var Checkers = function (fen) {
   }
 
   function clone(obj) {
-    var dupe = (obj instanceof Array) ? [] : {};
-
-    for (var property in obj) {
-      if (typeof property === 'object') {
-        dupe[property] = clone(obj[property]);
-      } else {
-        dupe[property] = obj[property];
-      }
-    }
-
+    // var dupe = (obj instanceof Array) ? [] : {};
+    //
+    // for (var property in obj) {
+    //   if (typeof property === 'object') {
+    //     dupe[property] = clone(obj[property]);
+    //   } else {
+    //     dupe[property] = obj[property];
+    //   }
+    // }
+    var dupe = JSON.parse(JSON.stringify(obj));
+console.log(obj, dupe);
     return dupe;
   }
 
@@ -1014,9 +1050,7 @@ var Checkers = function (fen) {
       return reset();
     },
 
-    moves: function (options) {
-
-    },
+    moves: generate_moves,
 
     game_over: function () {
 
@@ -1087,7 +1121,25 @@ var Checkers = function (fen) {
 
     history: function (options) {
 
-    }
+    },
+
+    convertMoves: convertMoves,
+
+    convertNumber: convertNumber,
+
+    convertPosition: convertPosition,
+
+    outsideBoard: outsideBoard,
+
+    directionStrings: directionStrings,
+
+    oppositeDir: oppositeDir,
+
+    validDir: validDir,
+
+    position: position,
+
+    clone: clone
   }
 };
 
@@ -1100,3 +1152,12 @@ if (typeof define !== 'undefined') {
     return Checkers;
   });
 }
+
+String.prototype.setCharAt = function(idx, chr) {
+  var idx = parseInt(idx);
+  if(idx > this.length - 1) {
+    return this.toString(); }
+  else {
+    return this.substr(0, idx) + chr + this.substr(idx + 1);
+  }
+};
