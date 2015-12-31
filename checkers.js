@@ -437,7 +437,8 @@ var Checkers = function (fen) {
         return false;
       } else {
         makeMove(move);
-        console.log('move made\n');
+        // console.log('move made\n and board is\n');
+        console.log(ascii());
       }
     }
 
@@ -491,7 +492,7 @@ var Checkers = function (fen) {
     push(move);
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')));
     position = position.setCharAt(convertNumber(move.from, 'internal'), 0);
-    console.log(position, 'makeMove');
+    // console.log(position, 'makeMove');
 
     if (move.flags & BITS.CAPTURE) {
       if (turn == BLACK) {
@@ -602,7 +603,7 @@ var Checkers = function (fen) {
 
       var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: []});
       // if (manCaptures.length == 0 && kingCaptures == 0) {
-      console.log(captures);
+      // console.log(captures);
       captures = longestCapture(captures);
       legalMoves = captures;
       console.log(index, 'captures', captures);
@@ -677,7 +678,7 @@ var Checkers = function (fen) {
           if (matchArray != null) {
             for (var i = 0; i < matchArray[0].length; i++) {
               var posTo = posFrom + (k * STEPS[dir]);
-              var moveObject = {jumps: [posFrom, posTo], takes: []};
+              var moveObject = {from: posFrom, to: posTo, takes: []};
               moves.push(moveObject);
             }
           }
@@ -699,7 +700,7 @@ var Checkers = function (fen) {
       if (pos != -1) {
         var posFrom = pos;
         var state = {position: position, dirFrom: ''};
-        var capture = {jumps: [], takes: []};
+        var capture = {jumps: [], takes: [], from: posFrom, to: ''};
         capture.jumps[0] = posFrom;
         console.log(posFrom, state, capture);
         var tempCaptures = capturesAtSquare(pos, state, capture);
@@ -741,6 +742,7 @@ console.log(piece, dirString);
               continue; //capturing twice forbidden
             }
             var updateCapture = clone(capture);
+            updateCapture.to = posTo;
             updateCapture.jumps.push(posTo);
             updateCapture.takes.push(posTake);
 
@@ -769,6 +771,7 @@ console.log(piece, dirString);
               var posTo = posFrom + ((takeIndex + k) * STEPS[dir]);
               var updateCapture = clone(capture);
               updateCapture.jumps.push(posTo);
+              updateCapture.to = posTo;
               updateCapture.takes.push(posTake);
 
               var updateState = clone(state);
@@ -974,7 +977,33 @@ console.log(tempPosition, square, maxLength);
     validDirs.w = {NE: true,  SE: false, SW: false, NW: true};
     validDirs.b = {NE: false, SE: true,  SW: true,  NW: false};
     return validDirs[piece][dir];
-}
+  }
+
+  function ascii() {
+    var expPosition = convertPosition(position, 'external');
+    var s = '+---------------------+\n';
+    var i = 1;
+    for (var row = 1; row <= 10; row++) {
+      s += '|\t';
+      if (row % 2 != 0) {
+        s += '  ';
+      }
+      for (var col = 1; col <= 10; col++) {
+        if (col % 2 == 0) {
+          s += '  ';
+          i++;
+        } else {
+          s += expPosition[i];
+        }
+      }
+      if (row % 2 == 0) {
+        s += '  ';
+      }
+      s += ' |\n';
+    }
+    s += '+---------------------+\n';
+    return  s;
+  }
 
   function make_pretty(ugly_move) {
     var move = clone(ugly_move);
@@ -1005,7 +1034,7 @@ console.log(tempPosition, square, maxLength);
     //   }
     // }
     var dupe = JSON.parse(JSON.stringify(obj));
-console.log(obj, dupe);
+// console.log(obj, dupe);
     return dupe;
   }
 
@@ -1074,9 +1103,7 @@ console.log(obj, dupe);
       return set_header(arguments);
     },
 
-    ascii: function () {
-      return ascii();
-    },
+    ascii: ascii,
 
     turn: function () {
       return turn;
