@@ -381,7 +381,7 @@ var Checkers = function (fen) {
         if (trim(key).length > 0) {
           headerObj[key] = value;
         }
-        // console.log(key, value);
+        console.log(key, value);
       }
 
       return headerObj;
@@ -419,6 +419,7 @@ var Checkers = function (fen) {
     }
 
     /* delete move numbers */
+    //TODO not working for move numbers with space
     ms = ms.replace(/\d+\./g, '');
 
     /* delete ... indicating black to move */
@@ -431,7 +432,9 @@ var Checkers = function (fen) {
     moves = moves.join(',').replace(/,,+/g, ',').split(',');
 
     var move = '';
+    console.log(moves);
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
+      console.log(moves[half_move]);
       move = getMoveObject(moves[half_move]);
       if (!move) {
         return false;
@@ -444,8 +447,10 @@ var Checkers = function (fen) {
 
     var result = moves[moves.length - 1];
     if (POSSIBLE_RESULTS.indexOf(result) > -1) {
-      if (has_keys(header) && typeof header.Result === 'undefined') {
+      console.log(headers);
+      if (headers['Result'] === 'undefined') {
         set_header(['Result', result]);
+        // console.log(headers);
       }
     } else {
       move = getMoveObject(result);
@@ -460,7 +465,7 @@ var Checkers = function (fen) {
   }
 
   function getMoveObject(move) {
-    console.log('getting object for', move);
+    // console.log('getting object for', move);
     var tempMove = {};
     var matches = move.split(/[x|-]/);
     tempMove.from = matches[0];
@@ -469,14 +474,14 @@ var Checkers = function (fen) {
     if (moveType == '-') {
       tempMove.flags = FLAGS.NORMAL
     } else {
-      moveType.flags = FLAGS.CAPTURE;
+      tempMove.flags = FLAGS.CAPTURE;
     }
     // console.log('calling legal moves');
     var moves = getLegalMoves(tempMove.from);
     // console.log(moves, 'from legal moves', tempMove);
     // if move legal then make move
     for (var i = 0; i < moves.length; i += 1) {
-      console.log(tempMove.to, convertNumber(moves[i].to, 'external'), 'is valid ?');
+      // console.log(tempMove.to, convertNumber(moves[i].to, 'external'), 'is valid ?');
       if (tempMove.to == convertNumber(moves[i].to, 'external')) {
         if (moves[i].takes.length > 0) {
           tempMove.flags = FLAGS.CAPTURE;
@@ -491,7 +496,7 @@ var Checkers = function (fen) {
   function makeMove(move) {
     var us = turn;
     var them = swap_color(us);
-    console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')));
+    // console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')));
     push(move);
     // console.log(move,position);
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')));
@@ -617,7 +622,7 @@ var Checkers = function (fen) {
       // console.log(captures);
       captures = longestCapture(captures);
       legalMoves = captures;
-      console.log(index, 'captures', captures);
+      // console.log(index, 'captures', captures);
       if (captures == 0) {
         // console.log('captures 0');
         legalMoves = movesAtSquare(index);
@@ -633,7 +638,7 @@ var Checkers = function (fen) {
       //   legalMoves = longestCapture(legalMoves);
       // }
     }
-    console.log(legalMoves);
+    // console.log(legalMoves);
     return legalMoves;
   }
 
@@ -660,12 +665,12 @@ var Checkers = function (fen) {
     var moves = [];
     var posFrom = square;
     var piece = position.charAt(posFrom);
-    console.log(piece, square, 'movesAtSquare');
+    // console.log(piece, square, 'movesAtSquare');
     switch (piece) {
       case 'b':
       case 'w':
         var dirStrings = directionStrings(position, posFrom, 2);
-        console.log(dirStrings);
+        // console.log(dirStrings);
         for (var dir in dirStrings) {
           var str = dirStrings[dir];
 
@@ -676,7 +681,7 @@ var Checkers = function (fen) {
             moves.push(moveObject);
             // console.log(moves);
           }
-          console.log(dir, matchArray, str, 'probing moves');
+          // console.log(dir, matchArray, str, 'probing moves');
         }
         break;
       case 'W':
@@ -723,7 +728,7 @@ var Checkers = function (fen) {
   }
 
   function capturesAtSquare(posFrom, state, capture) {
-    console.log(posFrom, state, capture, 'gettting captures');
+    // console.log(posFrom, state, capture, 'gettting captures');
     var piece = state.position.charAt(posFrom);
     // console.log(piece);
     if (piece != 'b' && piece != 'w' && piece != 'B' && piece != 'W') {
@@ -734,7 +739,7 @@ var Checkers = function (fen) {
     } else {
       var dirString = directionStrings(state.position, posFrom);
     }
-console.log(piece, dirString);
+// console.log(piece, dirString);
     var finished = true;
     var captureArrayForDir = {};
     for (var dir in dirString) {
@@ -856,7 +861,7 @@ console.log(piece, dirString);
   function longestCapture(captures) {
     var maxJumpCount = 0;
     for (var i = 0; i < captures.length; i++) {
-      console.log(captures[i]);
+      // console.log(captures[i]);
       var jumpCount = captures[i].jumps.length;
       if (jumpCount > maxJumpCount) {
         maxJumpCount = jumpCount;
@@ -956,7 +961,7 @@ console.log(piece, dirString);
     if (arguments.length == 2) {
       var maxLength = 100;
     }
-console.log(tempPosition, square, maxLength);
+// console.log(tempPosition, square, maxLength);
     var dirStrings = {};
     if (outsideBoard(square) == true) {
       return 334;
