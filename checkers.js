@@ -112,7 +112,7 @@ var Checkers = function (fen) {
   var BITS = {
     NORMAL: 1,
     CAPTURE: 2,
-    PROMOTION: 3
+    PROMOTION: 4
   };
 
   var board = [];
@@ -473,12 +473,15 @@ var Checkers = function (fen) {
     }
     // console.log('calling legal moves');
     var moves = getLegalMoves(tempMove.from);
-    // console.log(moves);
+    // console.log(moves, 'from legal moves', tempMove);
     // if move legal then make move
     for (var i = 0; i < moves.length; i += 1) {
       console.log(tempMove.to, convertNumber(moves[i].to, 'external'), 'is valid ?');
       if (tempMove.to == convertNumber(moves[i].to, 'external')) {
-
+        if (moves[i].takes.length > 0) {
+          tempMove.flags = FLAGS.CAPTURE;
+          tempMove.captures = moves[i].takes;
+        }
         return tempMove;
       }
     }
@@ -490,17 +493,25 @@ var Checkers = function (fen) {
     var them = swap_color(us);
     console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')));
     push(move);
+    // console.log(move,position);
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')));
     position = position.setCharAt(convertNumber(move.from, 'internal'), 0);
-    // console.log(position, 'makeMove');
 
-    if (move.flags & BITS.CAPTURE) {
-      if (turn == BLACK) {
-        board[move.to - 1] = 0;
-      } else {
-        board[move.to + 1] = 0;
+// console.log(position, 'makeMove no capture');
+    if (move.flags == 'c' && move.captures.length) {
+      for (var i = 0; i < move.captures.length; i++) {
+        position = position.setCharAt(move.captures[i], 0);
+        // console.log('setting captures bit at', convertNumber(move.captures[i], 'external'));
       }
     }
+    // console.log(position, 'makeMove captured');
+    // if (move.flags & BITS.CAPTURE) {
+    //   if (turn == BLACK) {
+    //     board[move.to - 1] = 0;
+    //   } else {
+    //     board[move.to + 1] = 0;
+    //   }
+    // }
 
     if (move.flags & BITS.PROMOTION) {
       board[move.to] = {type: move.promotion, color: us};
@@ -980,8 +991,8 @@ console.log(tempPosition, square, maxLength);
   }
 
   function ascii() {
-    var expPosition = convertPosition(position, 'external');
-    var s = '+---------------------+\n';
+    var extPosition = convertPosition(position, 'external');
+    var s = '+--------------------------+\n';
     var i = 1;
     for (var row = 1; row <= 10; row++) {
       s += '|\t';
@@ -993,7 +1004,7 @@ console.log(tempPosition, square, maxLength);
           s += '  ';
           i++;
         } else {
-          s += expPosition[i];
+          s += ' ' + extPosition[i];
         }
       }
       if (row % 2 == 0) {
@@ -1001,8 +1012,12 @@ console.log(tempPosition, square, maxLength);
       }
       s += ' |\n';
     }
-    s += '+---------------------+\n';
+    s += '+--------------------------+\n';
     return  s;
+  }
+
+  function getPosition() {
+    return position;
   }
 
   function make_pretty(ugly_move) {
@@ -1164,7 +1179,7 @@ console.log(tempPosition, square, maxLength);
 
     validDir: validDir,
 
-    position: position,
+    position: getPosition,
 
     clone: clone
   }
