@@ -94,7 +94,7 @@ var Checkers = function (fen) {
 
   var SYMBOLS = 'bwBW';
 
-  var DEFAULT_FEN = 'B:B:W';
+  var DEFAULT_FEN = 'W:B:W';
 
   var position;
   var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-';
@@ -146,7 +146,7 @@ var Checkers = function (fen) {
   }
 
   function load(fen) {
-
+console.log(fen);
       var dimension = 10;
 
     // fen_constants(dimension); //TODO for empty fens
@@ -171,10 +171,10 @@ var Checkers = function (fen) {
     // var positions = new Array();
     for (var i = 1; i <= position.length; i++) {
       // console.log(position[i]);
-      position = position.setCharAt(i, '0');
+      position = position.setCharAt(convertNumber(i, 'internal'), '0');
     }
     position = position.setCharAt(0, turn);
-    console.log(position, turn);
+    // console.log(position, turn);
     // TODO refactor
     for (var k = 1; k <= 2; k++) {
       // TODO called twide
@@ -183,6 +183,7 @@ var Checkers = function (fen) {
       var sideString = tokens[k].substr(1);
       if (sideString.length == 0) continue;
       var numbers = sideString.split(',');
+      console.log(color, sideString, numbers);
       for (var i = 0; i < numbers.length; i++) {
         var numSquare = numbers[i];
         var isKing = (numSquare.substr(0, 1) == 'K' ? true : false);
@@ -192,11 +193,13 @@ var Checkers = function (fen) {
           var from = parseInt(range[0]);
           var to = parseInt(range[1]);
           for (var j = from; j <= to; j++) {
+            console.log(position[j], 'looop');
             position = position.setCharAt(j, (isKing == true ? color.toUpperCase() : color.toLowerCase()));
             // put({type: color.toLowerCase(), color: color});
           }
         } else {
           var numSquare = parseInt(numSquare);
+          // console.log(position, 'else');
           position = position.setCharAt(numSquare, (isKing == true ? color.toUpperCase() : color.toLowerCase()));
           // put({type: color.toLowerCase(), color: color});
         }
@@ -329,12 +332,101 @@ var Checkers = function (fen) {
   }
 
   function generate_fen() {
-    var empty = 0;
-    var fen = '';
-    var cflags = '';
-    var move_number = '';
+    var black = [];
+    var white = [];
+    var externalPosition = convertPosition(position);
+    for (var i = 0; i < externalPosition.length; i++) {
+      switch (externalPosition[i]) {
+        case 'w':
+          white.push(i);
+          break;
+        case 'W':
+          white.push('K'+i);
+          break;
+        case 'b':
+          black.push(i);
+          break;
+        case 'B':
+          black.push(i);
+        default:
+          break;
+      }
+    }
+    return turn.toUpperCase() + ':W:' + white.join(',') + 'B:' + black.join(',');
+  }
 
-    return [fen, turn, cflags, move_number].join(' ');
+  function generatePDN(options) {
+    // for html usage {maxWidth: 72, newline_char: "<br />"}
+    var newline = (typeof options === 'object' && typeof options.newline_char === 'string') ?
+                    options.newline_char : '\n';
+    var maxWidth = (typeof options === 'object' && typeof options.maxWidth === 'number') ?
+                    options.maxWidth : 0;
+    var result = [];
+    var headerExists = false;
+
+    for (var i in header) {
+      result.push('[' + i + ' \"' + header[i] + '\"]' + newline);
+      headerExists = true;
+    }
+
+    if (headerExists && history.length) {
+      result.push(newline);
+    }
+
+    var tempHistory = clone(history);
+
+    var moves = [];
+    var moveString = '';
+    var moveNumber = 1;
+
+    while (tempHistory.length > 0) {
+      var move = tempHistory.shift();
+      // console.log(move);
+      if (move.turn == 'W') {
+        moveString += moveNumber + '. ';
+      }
+      moveString += move.move.from;
+      if (move.move.flags === 'c') {
+        moveString += 'x';
+      } else {
+        moveString += '-'
+      }
+      moveString += move.move.to;
+      moveString += ' ';
+      moveNumber += 1;
+    }
+
+    if (moveString.length) {
+      moves.push(moveString);
+    }
+
+    // TODO resutl from pdn or header??
+    if (typeof header.Result !== 'undefined') {
+      moves.push(header.Result);
+    }
+
+    if (maxWidth === 0) {
+      return result.join('') + moves.join(' ');
+    }
+
+    var currentWidth = 0;
+    for (var i = 0; i < moves.length; i++) {
+      if (currentWidth + moves[i].length > maxWidth && i !== 0) {
+        if (result[result.length - 1] === ' ') {
+          result.pop();
+        }
+
+        result.push(newline);
+        currentWidth = 0;
+      } else if (i !== 0){
+        result.push(' ');
+        currentWidth++;
+      }
+      result.push(' ');
+      currentWidth += moves[i].length;
+    }
+
+    return result.join('');
   }
 
   function set_header(args) {
@@ -383,7 +475,7 @@ var Checkers = function (fen) {
         if (trim(key).length > 0) {
           headerObj[key] = value;
         }
-        console.log(key, value);
+        // console.log(key, value);
       }
 
       return headerObj;
@@ -402,10 +494,17 @@ var Checkers = function (fen) {
       set_header([key, headers[key]]);
     }
 
-    if (headers['SetUp'] === '1') {
+    if (headers['Setup'] === '1') {
       if (!(('FEN' in headers) && load(headers['FEN']))) {
+        console.log('fen invalide');
         return false;
+      } else {
+        console.log(ascii());
+        console.log('fen valid');
       }
+    } else {
+      console.log('setup not present');
+      position = DEFAULT_POSITION_INTERNAL;
     }
 
     /* delete header to get the moves */
@@ -434,7 +533,8 @@ var Checkers = function (fen) {
     moves = moves.join(',').replace(/,,+/g, ',').split(',');
 
     var move = '';
-    console.log(moves);
+    // console.log(moves);
+    console.log(position);
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
       console.log(moves[half_move]);
       move = getMoveObject(moves[half_move]);
@@ -500,6 +600,7 @@ var Checkers = function (fen) {
   function makeMove(move) {
     var us = turn;
     var them = swap_color(us);
+    // console.log(turn, us, them);
     // console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')));
     push(move);
     // console.log(move,position);
@@ -1095,9 +1196,7 @@ var Checkers = function (fen) {
 
     fen: generate_fen,
 
-    pdn: function (options) {
-
-    },
+    pdn: generatePDN,
 
     load_pdn: function (pdn, options) {
 
