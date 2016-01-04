@@ -110,6 +110,11 @@ var Checkers = function (fen) {
     PROMOTION: 'p'
   };
 
+  var SIGNS = {
+    n: '-',
+    c: 'x'
+  };
+
   var BITS = {
     NORMAL: 1,
     CAPTURE: 2,
@@ -120,7 +125,7 @@ var Checkers = function (fen) {
   var kings = {w: EMPTY, b: EMPTY};
   var turn = WHITE;
   var half_moves = 0;
-  var move_number = 1;
+  var moveNumber = 1;
   var history = [];
   var header = {};
 
@@ -131,11 +136,10 @@ var Checkers = function (fen) {
   }
 
   function clear() {
-    board = [];
-    kings = {w: EMPTY, b: EMPTY};
+    position = DEFAULT_POSITION_INTERNAL;
     turn = WHITE;
     half_moves = 0;
-    move_number = 1;
+    moveNumber = 1;
     history = [];
     header = {};
     update_setup(generate_fen());
@@ -438,6 +442,12 @@ console.log(fen);
     return header;
   }
 
+  /* called when the initial board setup is changed with put() or remove().
+   * modifies the SetUp and FEN properties of the header object.  if the FEN is
+   * equal to the default position, the SetUp and FEN are deleted
+   * the setup is only updated if history.length is zero, ie moves haven't been
+   * made.
+   */
   function update_setup(fen) {
     if (history.length > 0) {
       return false;
@@ -536,14 +546,16 @@ console.log(fen);
     // console.log(moves);
     console.log(position);
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
-      console.log(moves[half_move]);
+
+      // console.log(moves[half_move]);
       move = getMoveObject(moves[half_move]);
       if (!move) {
         return false;
       } else {
         makeMove(move);
+        // console.log(move);
         // console.log('move made\n and board is\n');
-        console.log(ascii());
+        // console.log(ascii());
       }
     }
 
@@ -562,12 +574,13 @@ console.log(fen);
         makeMove(move);
       }
     }
-    console.log(moves);
+    // console.log(moves);
     return true;
   }
 
   function getMoveObject(move) {
     // console.log('getting object for', move);
+    // TODO move flags for both capture and promote??
     var tempMove = {};
     var matches = move.split(/[x|-]/);
     tempMove.from = matches[0];
@@ -590,6 +603,7 @@ console.log(fen);
         if (moves[i].takes.length > 0) {
           tempMove.flags = FLAGS.CAPTURE;
           tempMove.captures = moves[i].takes;
+          tempMove.piecesCaptured = moves[i].piecesTaken;
         }
         return tempMove;
       }
@@ -623,35 +637,29 @@ console.log(fen);
     }
 
     if (turn == BLACK) {
-      move_number += 1;
+      moveNumber += 1;
     }
     turn = swap_color(turn);
   }
 
   function get(square) {
-    var piece = board[SQUARES[square]];
-    return (piece) ? {type: piece.type, color: piece.color} : null;
+    var piece = position.charAt(convertNumber(square, 'internal'));
+    return piece;
   }
 
   function put(piece, square) {
-    // check for valid piece object
-    if (!('type' in piece && 'color' in piece)) {
+    // check for valid piece string
+    if (SYMBOLS.match(piece) == null) {
       return false;
     }
 
-    // check for piece
-    if (SYMBOLS.indexOf(piece.type.toLowerCase()) === -1) {
-      return false;
-    }
 
     // check for valid square
-    if (!(square in SQUARES)) {
+    if (outsideBoard(convertNumber(square, 'internal')) == true) {
       return false;
     }
 
-    var sq = SQUARES[square];
-
-    board[sq] = {type: piece.type, color: piece.color};
+    position = position.setCharAt(convertNumber(square, 'internal'), piece);
     update_setup(generate_fen());
 
     return true;
@@ -717,7 +725,7 @@ console.log(fen);
 
       var index = convertNumber(index, 'internal')
 
-      var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: []});
+      var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: [], piecesTaken: []});
 
       captures = longestCapture(captures);
       legalMoves = captures;
@@ -803,7 +811,7 @@ console.log(fen);
       if (pos != -1) {
         var posFrom = pos;
         var state = {position: position, dirFrom: ''};
-        var capture = {jumps: [], takes: [], from: posFrom, to: ''};
+        var capture = {jumps: [], takes: [], from: posFrom, to: '', piecesTaken: []};
         capture.jumps[0] = posFrom;
         console.log(posFrom, state, capture);
         var tempCaptures = capturesAtSquare(pos, state, capture);
@@ -848,7 +856,8 @@ console.log(fen);
             updateCapture.to = posTo;
             updateCapture.jumps.push(posTo);
             updateCapture.takes.push(posTake);
-
+            updateCapture.piecesTaken.push(position.charAt(posTake));
+// console.log(updateCapture);
             var updateState = clone(state);
             updateState.dirFrom = oppositeDir(dir);
             var pieceCode = updateState.position.charAt(posFrom);
@@ -876,7 +885,7 @@ console.log(fen);
               updateCapture.jumps.push(posTo);
               updateCapture.to = posTo;
               updateCapture.takes.push(posTake);
-
+              updateCapture.piecesTaken.push(position.charAt(posTake));
               var updateState = clone(state);
               updateState.dirFrom = oppositeDir(dir);
               var pieceCode = updateState.position.charAt(posFrom);
@@ -907,15 +916,36 @@ console.log(fen);
     history.push({
       move: move,
       turn: turn,
-      move_number: move_number
+      moveNumber: moveNumber
     });
   }
 
-  function undo_move() {
+  function undoMove() {
     var old = history.pop();
+    console.log(old);
     if (old == null) {
       return null;
     }
+
+    var move = old.move;
+    turn = old.turn;
+    moveNumber = old.moveNumber;
+
+    var us = turn;
+    var them = swap_color(turn);
+console.log(position, 'before');
+    position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece);
+    position = position.setCharAt(convertNumber(move.to, 'internal'), 0);
+    if (move.flags == 'c') {
+      for (var i = 0; i < move.captures.length; i++) {
+        position = position.setCharAt(convertNumber(move.captures[i], 'internal'), move.piecesCaptured[i]);
+      }
+    } else if (move.flags == 'p') {
+      position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece.toLowerCase());
+    }
+console.log(position, 'after');
+    return move;
+
   }
 
   function get_disambiguator(move) {
@@ -1108,40 +1138,44 @@ console.log(fen);
     return  s;
   }
 
+  function getHistory(options) {
+    var tempHistory = clone(history);
+    var moveHistory = [];
+    var verbose = (typeof options !== 'undefined' && 'verbose' in options && options.verbose);
+
+    while (tempHistory.length > 0) {
+      var move = tempHistory.shift();
+      // console.log(move);
+      if (verbose) {
+        moveHistory.push(makePretty(move));
+      } else {
+        moveHistory.push(move.move.from + SIGNS[move.move.flags] + move.move.to);
+      }
+    }
+
+    return moveHistory;
+  }
+
   function getPosition() {
     return position;
   }
 
-  function make_pretty(ugly_move) {
-    var move = clone(ugly_move);
-    // move.san = move_to_san(move);
-    // move.to = algebraic(move.to);
-    // move.from = algebraic(move.from);
-
-    var flags = '';
-
-    for (var flag in BITS) {
-      if (BITS[flag] & move.flags) {
-        flags += FLAGS[flag];
-      }
+  function makePretty(uglyMove) {
+    console.log(uglyMove);
+    var move = {};
+    move.from = uglyMove.move.from;
+    move.to = uglyMove.move.to;
+    move.flags = uglyMove.move.flags;
+    move.moveNumber = uglyMove.moveNumber;
+    move.piece = uglyMove.move.piece;
+    if (move.flags === 'c') {
+      move.captures = uglyMove.move.captures.join(',');
     }
-    move.flags = flags;
-
     return move;
   }
 
   function clone(obj) {
-    // var dupe = (obj instanceof Array) ? [] : {};
-    //
-    // for (var property in obj) {
-    //   if (typeof property === 'object') {
-    //     dupe[property] = clone(obj[property]);
-    //   } else {
-    //     dupe[property] = obj[property];
-    //   }
-    // }
     var dupe = JSON.parse(JSON.stringify(obj));
-// console.log(obj, dupe);
     return dupe;
   }
 
@@ -1164,7 +1198,7 @@ console.log(fen);
           nodes++;
         }
       }
-      undo_move();
+      undoMove();
     }
 
     return nodes;
@@ -1223,8 +1257,8 @@ console.log(fen);
     getLegalMoves: getLegalMoves,
 
     undo: function () {
-      var move = undo_move();
-      return (move) ? make_pretty(move) : null;
+      var move = undoMove();
+      return (move) ? move : null;
     },
 
     clear: function () {
@@ -1251,9 +1285,7 @@ console.log(fen);
       return null;
     },
 
-    history: function (options) {
-
-    },
+    history: getHistory,
 
     convertMoves: convertMoves,
 
@@ -1271,7 +1303,9 @@ console.log(fen);
 
     position: getPosition,
 
-    clone: clone
+    clone: clone,
+
+    makePretty: makePretty
   }
 };
 
@@ -1288,8 +1322,8 @@ if (typeof define !== 'undefined') {
 String.prototype.setCharAt = function(idx, chr) {
   var idx = parseInt(idx);
   if(idx > this.length - 1) {
-    return this.toString(); }
-  else {
+    return this.toString();
+  } else {
     return this.substr(0, idx) + chr + this.substr(idx + 1);
   }
 };
