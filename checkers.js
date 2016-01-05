@@ -523,7 +523,7 @@ var Checkers = function (fen) {
         console.log('fen valid');
       }
     } else {
-      console.log('setup not present');
+      // console.log('setup not present');
       position = DEFAULT_POSITION_INTERNAL;
     }
 
@@ -554,7 +554,7 @@ var Checkers = function (fen) {
 
     var move = '';
     // console.log(moves);
-    console.log(position);
+    // console.log(position);
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
 
       // console.log(moves[half_move]);
@@ -618,6 +618,7 @@ var Checkers = function (fen) {
         return tempMove;
       }
     }
+    console.log(moves, tempMove);
     return false;
   }
 
@@ -641,9 +642,10 @@ var Checkers = function (fen) {
 // console.log(move, us, them, move.piece);
     // Promoting piece here
     if (move.to <= 5 && move.piece == 'w') {
-      position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase());
+      // console.log('piece promoted');
+      position = position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase());
     } else if (move.to >= 46 && move.piece == 'b') {
-      position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase());
+      position = position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase());
     }
 
     if (turn == BLACK) {
@@ -794,14 +796,14 @@ var Checkers = function (fen) {
         break;
       case 'W':
       case 'B':
-        var dirStrings = directionStrings(posFrom);
+        var dirStrings = directionStrings(position, posFrom);
         for (var dir in dirStrings) {
           var str = dirStrings[dir];
 
           var matchArray = str.match(/^[BW]0/) //e.g. B000, W0
           if (matchArray != null) {
             for (var i = 0; i < matchArray[0].length; i++) {
-              var posTo = posFrom + (k * STEPS[dir]);
+              var posTo = posFrom + (i * STEPS[dir]);
               var moveObject = {from: posFrom, to: posTo, takes: [], jumps: []};
               moves.push(moveObject);
             }
@@ -1159,6 +1161,18 @@ var Checkers = function (fen) {
     return  s;
   }
 
+  function gameOver() {
+    // First check if any piece left
+    for (var i = 0; i < position.length; i++) {
+      if (position[i].toLowerCase() == turn.toLowerCase()) {
+        // if moves left game not over
+        // console.log('checking if no moves left');
+        return !generate_moves();
+      }
+    }
+    return true;
+  }
+
   function getHistory(options) {
     var tempHistory = clone(history);
     var moveHistory = [];
@@ -1243,9 +1257,7 @@ var Checkers = function (fen) {
 
     moves: generate_moves,
 
-    game_over: function () {
-
-    },
+    gameOver: gameOver,
 
     validate_fen: validate_fen,
 
