@@ -94,7 +94,7 @@ var Checkers = function (fen) {
 
   var SYMBOLS = 'bwBW';
 
-  var DEFAULT_FEN = 'W:B:W';
+  var DEFAULT_FEN = 'W:W31-50:B1-20';
 
   var position;
   var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-';
@@ -109,6 +109,14 @@ var Checkers = function (fen) {
     CAPTURE: 'c',
     PROMOTION: 'p'
   };
+
+  var UNICODES = {
+    'w': '\u26C0',
+    'b': '\u26C2',
+    'B': '\u26C1',
+    'W': '\u26C3',
+    '0': '  '
+  }
 
   var SIGNS = {
     n: '-',
@@ -150,9 +158,13 @@ var Checkers = function (fen) {
   }
 
   function load(fen) {
-console.log(fen);
+    // TODO for default fen
       var dimension = 10;
-
+    if (!fen || fen == DEFAULT_FEN) {
+      position = DEFAULT_POSITION_INTERNAL;
+      update_setup(generate_fen(position));
+      return true;
+    }
     // fen_constants(dimension); //TODO for empty fens
 
     var squareCount = parseInt(dimension * dimension / 2);
@@ -210,7 +222,7 @@ console.log(fen);
       }
     }
 
-    console.log(position);
+    // console.log(position);
     update_setup(generate_fen(position));
 
     return true;
@@ -667,7 +679,7 @@ console.log(fen);
 
   function remove(square) {
     var piece = get(square);
-    board[SQUARES[square]] = null;
+    position = position.setCharAt(convertNumber(square, 'internal'), 0);
     update_setup(generate_fen());
 
     return piece;
@@ -694,27 +706,30 @@ console.log(fen);
     return move;
   }
 
-  function generate_moves(move, options) {
-    function add_move(board, moves, from, to, flags) {
-      // handle promotion
-      if ((board[from] == 'b' || board[from] == 'w') && to == 1) {
-        moves.push(build_move(board, from, to, flags, piece.toUpperCase()));
-      } else {
-        moves.push(build_move(board, from, to, flags));
+  function generate_moves(square) {
+
+    var us = turn;
+    var them = swap_color(us);
+    var moves = [];
+    if (square) {
+      moves = getLegalMoves(square);
+    } else {
+      var externalPosition = convertPosition(position, 'external');
+      // console.log(externalPosition, position);
+      var pos = 1;
+      for (var i = 1; i < externalPosition.length; i++) {
+        if (externalPosition[i] == us || externalPosition[i] == us.toLowerCase()) {
+          var tempMoves = getLegalMoves(i);
+
+          if (tempMoves.length) {
+            moves.push(convertMoves(tempMoves, 'external'));
+
+          }
+        }
       }
     }
 
-    var moves = [];
-    var us = turn;
-    var them = swap_color(us);
-
-    var first_sq;
-    var last_sq;
-    var single_square = false;
-
-    var legal;
-
-    moves = getLegalMoves(move.from);
+    return moves = [].concat.apply([], moves);
   }
 
   function getLegalMoves(index) {
@@ -774,7 +789,7 @@ console.log(fen);
           var matchArray = str.match(/^[bw]0/) //e.g. b0 w0
           if (matchArray != null && validDir(piece, dir) == true) {
             var posTo = posFrom + STEPS[dir];
-            var moveObject = {from: posFrom, to: posTo, takes: []};
+            var moveObject = {from: posFrom, to: posTo, takes: [], jumps: []};
             moves.push(moveObject);
           }
         }
@@ -789,7 +804,7 @@ console.log(fen);
           if (matchArray != null) {
             for (var i = 0; i < matchArray[0].length; i++) {
               var posTo = posFrom + (k * STEPS[dir]);
-              var moveObject = {from: posFrom, to: posTo, takes: []};
+              var moveObject = {from: posFrom, to: posTo, takes: [], jumps: []};
               moves.push(moveObject);
             }
           }
@@ -933,7 +948,7 @@ console.log(fen);
 
     var us = turn;
     var them = swap_color(turn);
-console.log(position, 'before');
+// console.log(position, 'before');
     position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece);
     position = position.setCharAt(convertNumber(move.to, 'internal'), 0);
     if (move.flags == 'c') {
@@ -943,7 +958,7 @@ console.log(position, 'before');
     } else if (move.flags == 'p') {
       position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece.toLowerCase());
     }
-console.log(position, 'after');
+// console.log(position, 'after');
     return move;
 
   }
@@ -1000,18 +1015,21 @@ console.log(position, 'after');
   }
 
   function convertMoves(moves, type) {
+    // console.log(moves);
     var tempMoves = [];
     if (!type) {
       return tempMoves;
     }
     for (var i = 0; i < moves.length; i++) {
       var moveObject = {jumps: [], takes: []};
+      moveObject.from = convertNumber(moves[i].from, type);
       for (var j = 0; j < moves[i].jumps.length; j++) {
         moveObject.jumps[j] = convertNumber(moves[i].jumps[j], type);
       }
       for (var j = 0; j < moves[i].takes.length; j++) {
         moveObject.takes[j] = convertNumber(moves[i].takes[j], type);
       }
+      moveObject.to = convertNumber(moves[i].to, type);
       tempMoves.push(moveObject);
     }
     return tempMoves;
@@ -1112,9 +1130,9 @@ console.log(position, 'after');
     return validDirs[piece][dir];
   }
 
-  function ascii() {
+  function ascii(unicode) {
     var extPosition = convertPosition(position, 'external');
-    var s = '+--------------------------+\n';
+    var s = '\n+-------------------------------+\n';
     var i = 1;
     for (var row = 1; row <= 10; row++) {
       s += '|\t';
@@ -1126,15 +1144,20 @@ console.log(position, 'after');
           s += '  ';
           i++;
         } else {
-          s += ' ' + extPosition[i];
+          if (unicode == true) {
+            s += ' ' + UNICODES[extPosition[i]];
+          } else {
+            s += ' ' + extPosition[i];
+          }
+
         }
       }
       if (row % 2 == 0) {
         s += '  ';
       }
-      s += ' |\n';
+      s += '\t|\n';
     }
-    s += '+--------------------------+\n';
+    s += '+-------------------------------+\n';
     return  s;
   }
 
