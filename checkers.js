@@ -129,8 +129,6 @@ var Checkers = function (fen) {
     PROMOTION: 4
   };
 
-  var board = [];
-  var kings = {w: EMPTY, b: EMPTY};
   var turn = WHITE;
   var half_moves = 0;
   var moveNumber = 1;
@@ -1272,7 +1270,17 @@ var Checkers = function (fen) {
     },
 
     move: function move(move) {
-
+      if (typeof move.to == 'undefined' && typeof move.from == 'undefined') {
+        return false;
+      }
+      var moves = getLegalMoves(move.from);
+      for (var i = 0; i < moves.length; i++) {
+        if (move.to == convertNumber(moves[i].to, 'external')) {
+          makeMove(move);
+          return move;
+        }
+      }
+      return false;
     },
 
     getMoves: getMoves,
