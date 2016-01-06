@@ -102,7 +102,7 @@ var Checkers = function (fen) {
   position = DEFAULT_POSITION_INTERNAL;
   var STEPS = {NE: -5, SE: 6, SW: 5, NW: -6};
 
-  var POSSIBLE_RESULTS = ['1-0', '0-1', '1/2-1/2', '*'];
+  var POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*'];
 
   var FLAGS = {
     NORMAL: 'n',
@@ -553,11 +553,11 @@ var Checkers = function (fen) {
     moves = moves.join(',').replace(/,,+/g, ',').split(',');
 
     var move = '';
-    // console.log(moves);
+    // console.log(moves.pop());
     // console.log(position);
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
 
-      // console.log(moves[half_move]);
+      // console.log(moves.length-1, half_move);
       move = getMoveObject(moves[half_move]);
       if (!move) {
         return false;
@@ -571,7 +571,7 @@ var Checkers = function (fen) {
 
     var result = moves[moves.length - 1];
     if (POSSIBLE_RESULTS.indexOf(result) > -1) {
-      console.log(headers);
+      // console.log(headers);
       if (headers['Result'] === 'undefined') {
         set_header(['Result', result]);
         // console.log(headers);
@@ -608,6 +608,7 @@ var Checkers = function (fen) {
     // console.log(moves, 'from legal moves', tempMove);
     // if move legal then make move
     for (var i = 0; i < moves.length; i += 1) {
+      // console.log(moves[i]);
       // console.log(tempMove.to, convertNumber(moves[i].to, 'external'), 'is valid ?');
       if (tempMove.to == convertNumber(moves[i].to, 'external')) {
         if (moves[i].takes.length > 0) {
@@ -800,7 +801,7 @@ var Checkers = function (fen) {
         for (var dir in dirStrings) {
           var str = dirStrings[dir];
 
-          var matchArray = str.match(/^[BW]0/) //e.g. B000, W0
+          var matchArray = str.match(/^[BW]0+/) //e.g. B000, W0
           if (matchArray != null) {
             for (var i = 0; i < matchArray[0].length; i++) {
               var posTo = posFrom + (i * STEPS[dir]);
@@ -887,7 +888,7 @@ var Checkers = function (fen) {
           var matchArray = str.match(/^B0*[wW]0+|^W0*[bB]0+/);  // matches: B00w000, WB00
           if (matchArray != null) {
             var matchStr = matchArray[0];
-            var matchArraySubstr = match_str.match(/[wW]0+$|[bB]0+$/);  // matches: w000, B00
+            var matchArraySubstr = matchStr.match(/[wW]0+$|[bB]0+$/);  // matches: w000, B00
             var matchSubstr = matchArraySubstr[0];
             var takeIndex = matchStr.length - matchSubstr.length;
             var posTake = posFrom + (takeIndex * STEPS[dir]);
@@ -895,7 +896,7 @@ var Checkers = function (fen) {
               continue;
             }
             for (var i = 0; i < matchSubstr.length; i++) {
-              var posTo = posFrom + ((takeIndex + k) * STEPS[dir]);
+              var posTo = posFrom + ((takeIndex + i) * STEPS[dir]);
               var updateCapture = clone(capture);
               updateCapture.jumps.push(posTo);
               updateCapture.to = posTo;
