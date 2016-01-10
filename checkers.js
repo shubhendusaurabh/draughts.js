@@ -318,7 +318,8 @@ var Checkers = function (fen) {
   function generate_fen () {
     var black = []
     var white = []
-    var externalPosition = convertPosition(position)
+    var externalPosition = convertPosition(position, 'external')
+    // console.log(externalPosition, position);
     for (var i = 0; i < externalPosition.length; i++) {
       switch (externalPosition[i]) {
         case 'w':
@@ -337,7 +338,7 @@ var Checkers = function (fen) {
           break
       }
     }
-    return turn.toUpperCase() + ':W:' + white.join(',') + 'B:' + black.join(',')
+    return turn.toUpperCase() + ':W' + white.join(',') + ':B' + black.join(',')
   }
 
   function generatePDN (options) {
@@ -597,7 +598,7 @@ var Checkers = function (fen) {
     var us = turn
     var them = swap_color(us)
     // console.log(turn, us, them)
-    // console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')))
+    console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')))
     push(move)
     // console.log(move,position)
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')))
@@ -696,6 +697,7 @@ var Checkers = function (fen) {
         }
       }
     }
+    console.log(moves);
     moves = [].concat.apply([], moves)
     return moves
   }
@@ -704,7 +706,8 @@ var Checkers = function (fen) {
     // var captures = getCaptures(index)
     // var kingCaptures = getCaptures(index)
     var legalMoves
-    if (index) {
+    index = parseInt(index, 10)
+    if (!Number.isNaN(index)) {
       var index = convertNumber(index, 'internal')
 
       var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: [], piecesTaken: []})
@@ -712,7 +715,7 @@ var Checkers = function (fen) {
       captures = longestCapture(captures)
       legalMoves = captures
       // console.log(index, 'captures', captures)
-      if (captures === 0) {
+      if (captures.length === 0) {
         legalMoves = movesAtSquare(index)
       }
     }
@@ -721,6 +724,7 @@ var Checkers = function (fen) {
   }
 
   function getMoves (index) {
+    return generate_moves(index)
     var moves = []
     var pos = 0
     var color = position[index]
@@ -731,7 +735,11 @@ var Checkers = function (fen) {
       // console.log(pos, color)
       if (pos !== -1) {
         var posFrom = pos
-        var tempMoves = movesAtSquare(posFrom, position)
+        var capture = getCaptures(pos)
+        if (capture.length) {
+          captures.push(capture);
+        }
+        var tempMoves = movesAtSquare(posFrom)
         moves = moves.concat(tempMoves)
       }
     }
@@ -743,7 +751,7 @@ var Checkers = function (fen) {
     var moves = []
     var posFrom = square
     var piece = position.charAt(posFrom)
-    // console.log(piece, square, 'movesAtSquare')
+    // console.trace(piece, square, 'movesAtSquare')
     switch (piece) {
       case 'b':
       case 'w':
@@ -782,22 +790,19 @@ var Checkers = function (fen) {
     return moves
   }
 
-  function getCaptures (index) {
+  function getCaptures () {
+    var us =  turn
+    var them = swap_color(us)
     var captures = []
-    var pos = 0
-    var color = position[index]
-    console.log('getting capture', position, index)
-    // color = color.toLowerCase()
-    while (pos !== -1) {
-      pos = position.indexOf(color, pos + 1)
-      if (pos !== -1) {
-        var posFrom = pos
+    // var pos = 1
+    for (var i = 0; i < position.length; i++) {
+      if (position[i] === us || position[i] === us.toLowerCase()) {
+        var posFrom = i
         var state = {position: position, dirFrom: ''}
         var capture = {jumps: [], takes: [], from: posFrom, to: '', piecesTaken: []}
         capture.jumps[0] = posFrom
-        console.log(posFrom, state, capture)
-        var tempCaptures = capturesAtSquare(pos, state, capture)
-        captures = captures.concat(tempCaptures)
+        var tempCaptures = capturesAtSquare(posFrom, state, capture)
+        captures = captures.concat(convertMoves(tempCaptures, 'external'))
       }
     }
     captures = longestCapture(captures)
@@ -839,6 +844,7 @@ var Checkers = function (fen) {
             updateCapture.jumps.push(posTo)
             updateCapture.takes.push(posTake)
             updateCapture.piecesTaken.push(position.charAt(posTake))
+            updateCapture.from = posFrom
             // console.log(updateCapture)
             var updateState = clone(state)
             updateState.dirFrom = oppositeDir(dir)
@@ -1158,7 +1164,7 @@ var Checkers = function (fen) {
   }
 
   function getPosition () {
-    return position
+    return convertPosition(position, 'external')
   }
 
   function makePretty (uglyMove) {
@@ -1250,10 +1256,14 @@ var Checkers = function (fen) {
       if (typeof move.to === 'undefined' && typeof move.from === 'undefined') {
         return false
       }
+      move.to = parseInt(move.to, 10)
+      move.from = parseInt(move.from, 10)
       var moves = getLegalMoves(move.from)
+      console.log(move.from);
       for (var i = 0; i < moves.length; i++) {
         if (move.to === convertNumber(moves[i].to, 'external')) {
-          makeMove(move)
+          makeMove(moves[i])
+          console.log(moves[i]);
           return move
         }
       }
@@ -1289,10 +1299,6 @@ var Checkers = function (fen) {
       return perft(depth)
     },
 
-    square_color: function (square) {
-      return null
-    },
-
     history: getHistory,
 
     convertMoves: convertMoves,
@@ -1313,7 +1319,9 @@ var Checkers = function (fen) {
 
     clone: clone,
 
-    makePretty: makePretty
+    makePretty: makePretty,
+
+    captures: getCaptures
   }
 }
 
