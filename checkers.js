@@ -605,9 +605,9 @@ var Checkers = function (fen) {
     position = position.setCharAt(convertNumber(move.from, 'internal'), 0)
 
     // console.log(position, 'makeMove no capture')
-    if (move.flags === 'c' && move.captures.length) {
-      for (var i = 0; i < move.captures.length; i++) {
-        position = position.setCharAt(move.captures[i], 0)
+    if (move.takes.length) {
+      for (var i = 0; i < move.takes.length; i++) {
+        position = position.setCharAt(convertNumber(move.takes[i], 'internal'), 0)
       // console.log('setting captures bit at', convertNumber(move.captures[i], 'external'))
       }
     }
@@ -681,24 +681,25 @@ var Checkers = function (fen) {
     var us = turn
     var them = swap_color(us)
     var moves = []
+    var captures = []
+
     if (square) {
       moves = getLegalMoves(square)
     } else {
-      var externalPosition = convertPosition(position, 'external')
-      // console.log(externalPosition, position)
-      var pos = 1
-      for (var i = 1; i < externalPosition.length; i++) {
-        if (externalPosition[i] === us || externalPosition[i] === us.toLowerCase()) {
-          var tempMoves = getLegalMoves(i)
+      var tempCaptures = getCaptures();
+      if (tempCaptures.length) {
 
-          if (tempMoves.length) {
-            moves.push(convertMoves(tempMoves, 'external'))
-          }
-        }
+        tempCaptures[0].flags = FLAGS.CAPTURE
+        tempCaptures[0].captures = tempCaptures[0].jumps
+        // tempCaptures[0].piecesCaptured = tempCaptures[0].piecesTaken
+        // console.log(tempCaptures);
+        return tempCaptures;
       }
+      moves = getMoves()
     }
-    console.log(moves);
+    // TODO returns [] for on hovering for square no
     moves = [].concat.apply([], moves)
+    // console.log(moves);
     return moves
   }
 
@@ -724,26 +725,20 @@ var Checkers = function (fen) {
   }
 
   function getMoves (index) {
-    return generate_moves(index)
+    // return generate_moves(index)
     var moves = []
-    var pos = 0
-    var color = position[index]
-    color = color.toLowerCase()
-    console.log(index, color, 'movesfetching')
-    while (pos !== -1) {
-      pos = position.indexOf(color, pos + 1)
-      // console.log(pos, color)
-      if (pos !== -1) {
-        var posFrom = pos
-        var capture = getCaptures(pos)
-        if (capture.length) {
-          captures.push(capture);
+    var us = turn
+    var them = swap_color(us)
+
+    for (var i = 1; i < position.length; i++) {
+      if (position[i] === us || position[i] === us.toLowerCase()) {
+        var tempMoves = movesAtSquare(i);
+        if (tempMoves.length) {
+          // console.log(tempMoves, convertMoves(tempMoves, 'external'));
+          moves = moves.concat(convertMoves(tempMoves, 'external'))
         }
-        var tempMoves = movesAtSquare(posFrom)
-        moves = moves.concat(tempMoves)
       }
     }
-    console.log(moves, 'fetched')
     return moves
   }
 
@@ -982,7 +977,7 @@ var Checkers = function (fen) {
         selectedCaptures.push(captures[i])
       }
     }
-
+// console.log(selectedCaptures);
     return selectedCaptures
   }
 
@@ -1258,13 +1253,17 @@ var Checkers = function (fen) {
       }
       move.to = parseInt(move.to, 10)
       move.from = parseInt(move.from, 10)
-      var moves = getLegalMoves(move.from)
-      console.log(move.from);
+      // var moves = getLegalMoves(move.from)
+      var moves = generate_moves()
+      // console.log(moves);
       for (var i = 0; i < moves.length; i++) {
-        if (move.to === convertNumber(moves[i].to, 'external')) {
+        // if (move.to === convertNumber(moves[i].to, 'external')) {
+        if ((move.to === moves[i].to) && (move.from === moves[i].from)) {
+          // makeMove(convertMoves(moves[i], 'external'))
+          console.log('sending mvoe', moves[i], move);
           makeMove(moves[i])
-          console.log(moves[i]);
-          return move
+          // console.log(moves[i]);
+          return moves[i]
         }
       }
       return false
