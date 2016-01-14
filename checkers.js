@@ -72,7 +72,7 @@ var Checkers = function (fen) {
   var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-'
   var DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww'
   var STEPS = {NE: -5, SE: 6, SW: 5, NW: -6}
-  var POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*']
+  var POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*', '1-0', '0-1']
   var FLAGS = {
     NORMAL: 'n',
     CAPTURE: 'c',
@@ -532,7 +532,7 @@ var Checkers = function (fen) {
     for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
       // console.log(moves.length-1, half_move)
       move = getMoveObject(moves[half_move])
-      console.log(move);
+      // console.log(move);
       if (!move) {
         return false
       } else {
@@ -584,7 +584,7 @@ var Checkers = function (fen) {
     // if move legal then make move
     for (var i = 0; i < moves.length; i += 1) {
       // console.log(moves[i])
-      console.log('is valid ?', typeof tempMove.from, typeof moves[i].from, tempMove.to, moves[i].to)
+      // console.log('is valid ?', typeof tempMove.from, typeof moves[i].from, tempMove.to, moves[i].to)
       if (tempMove.to === moves[i].to && tempMove.from === moves[i].from) {
         if (moves[i].takes.length > 0) {
           tempMove.flags = FLAGS.CAPTURE
@@ -592,7 +592,7 @@ var Checkers = function (fen) {
           tempMove.takes = moves[i].takes
           tempMove.piecesCaptured = moves[i].piecesTaken
         }
-        console.log(moves[i]);
+        // console.log(moves[i]);
         return tempMove
       }
     }
@@ -604,7 +604,7 @@ var Checkers = function (fen) {
     var us = turn
     var them = swap_color(us)
     // console.log(turn, us, them)
-    console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')))
+    // console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')))
     push(move)
     // console.log(move,position)
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')))
@@ -1155,7 +1155,7 @@ var Checkers = function (fen) {
       if (position[i].toLowerCase() === turn.toLowerCase()) {
         // if moves left game not over
         // console.log('checking if no moves left')
-        return !generate_moves()
+        return !!generate_moves()
       }
     }
     return true
@@ -1281,7 +1281,7 @@ var Checkers = function (fen) {
         // if (move.to === convertNumber(moves[i].to, 'external')) {
         if ((move.to === moves[i].to) && (move.from === moves[i].from)) {
           // makeMove(convertMoves(moves[i], 'external'))
-          console.log('sending mvoe', moves[i], move);
+          // console.log('sending mvoe', moves[i], move);
           makeMove(moves[i])
           // console.log(moves[i]);
           return moves[i]
