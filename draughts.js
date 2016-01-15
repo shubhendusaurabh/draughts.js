@@ -884,7 +884,7 @@ var Checkers = function (fen) {
             if (capture.takes.indexOf(posTake) > -1) {
               continue
             }
-            for (var i = 0; i < matchSubstr.length; i++) {
+            for (var i = 1; i < matchSubstr.length; i++) {
               var posTo = posFrom + ((takeIndex + i) * STEPS[dir])
               var updateCapture = clone(capture)
               updateCapture.jumps.push(posTo)
@@ -1166,7 +1166,7 @@ var Checkers = function (fen) {
       if (position[i].toLowerCase() === turn.toLowerCase()) {
         // if moves left game not over
         // console.log('checking if no moves left')
-        return !!generate_moves()
+        return generate_moves().length === 0
       }
     }
     return true
