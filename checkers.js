@@ -138,7 +138,8 @@ var Checkers = function (fen) {
     // var squareCount = parseInt(dimension * dimension / 2)
     var checkedFen = validate_fen(fen)
     if (!checkedFen.valid) {
-      console.error('Fen Error', fen)
+      console.error('Fen Error', fen, checkedFen)
+      return false;
     }
 
     clear()
@@ -248,7 +249,7 @@ var Checkers = function (fen) {
     if (fen === 'B::' || fen === 'W::' || fen === '?::') {
       return {valid: true, fen: fen + ':B:W'} // exception allowed i.e. empty fen
     }
-
+    fen = fen.trim()
     fen = fen.replace(/\..*$/, '')
 
     if (fen === '') {
@@ -256,6 +257,7 @@ var Checkers = function (fen) {
     }
 
     if (fen.substr(1, 1) !== ':') {
+      console.log(fen.trim(), fen.substr(1, 1));
       return {valid: false, error: errors[1], fen: fen}
     }
 
@@ -605,14 +607,17 @@ var Checkers = function (fen) {
     var them = swap_color(us)
     // console.log(turn, us, them)
     // console.log(us, them, 'mke in mive', move, position.charAt(convertNumber(move.to, 'internal')))
-    push(move)
     // console.log(move,position)
+    move.piece = position.charAt(convertNumber(move.from, 'internal'))
     position = position.setCharAt(convertNumber(move.to, 'internal'), position.charAt(convertNumber(move.from, 'internal')))
     position = position.setCharAt(convertNumber(move.from, 'internal'), 0)
-
+    move.flags = FLAGS.NORMAL
     // console.log(position, 'makeMove no capture')
     // TODO refactor to either takes or capture
     if (move.takes && move.takes.length) {
+      move.flags = FLAGS.CAPTURE
+      move.captures = move.takes
+      move.piecesCaptured = move.piecesTaken
       for (var i = 0; i < move.takes.length; i++) {
         position = position.setCharAt(convertNumber(move.takes[i], 'internal'), 0)
       // console.log('setting captures bit at', convertNumber(move.captures[i], 'external'))
@@ -621,12 +626,13 @@ var Checkers = function (fen) {
     // console.log(move, us, them, move.piece)
     // Promoting piece here
     if (move.to <= 5 && move.piece === 'w') {
+      move.flags = FLAGS.PROMOTION
       // console.log('piece promoted')
       position = position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase())
     } else if (move.to >= 46 && move.piece === 'b') {
       position = position.setCharAt(convertNumber(move.to, 'internal'), move.piece.toUpperCase())
     }
-
+    push(move)
     if (turn === BLACK) {
       moveNumber += 1
     }
@@ -697,11 +703,12 @@ var Checkers = function (fen) {
       // TODO change to be applicable to array
       if (tempCaptures.length) {
         for (var i = 0; i < tempCaptures.length; i++) {
+          // console.log(tempCaptures);
           tempCaptures[i].flags = FLAGS.CAPTURE
           tempCaptures[i].captures = tempCaptures[i].jumps
-          // tempCaptures[i].piecesCaptured = tempCaptures[i].piecesTaken
+          tempCaptures[i].piecesCaptured = tempCaptures[i].piecesTaken
         }
-        console.log(tempCaptures);
+        // console.log(tempCaptures);
         return tempCaptures;
       }
       moves = getMoves()
@@ -807,6 +814,7 @@ var Checkers = function (fen) {
         var capture = {jumps: [], takes: [], from: posFrom, to: '', piecesTaken: []}
         capture.jumps[0] = posFrom
         var tempCaptures = capturesAtSquare(posFrom, state, capture)
+        // console.log(tempCaptures);
         // console.log(convertMoves(tempCaptures, 'external'));
         if (tempCaptures.length) {
           captures = captures.concat(convertMoves(tempCaptures, 'external'))
@@ -883,6 +891,7 @@ var Checkers = function (fen) {
               updateCapture.to = posTo
               updateCapture.takes.push(posTake)
               updateCapture.piecesTaken.push(position.charAt(posTake))
+              updateCapture.posFrom = posFrom
               var updateState = clone(state)
               updateState.dirFrom = oppositeDir(dir)
               var pieceCode = updateState.position.charAt(posFrom)
@@ -920,12 +929,13 @@ var Checkers = function (fen) {
       turn: turn,
       moveNumber: moveNumber
     })
+    // console.log(move);
   }
 
   function undoMove () {
     var old = history.pop()
     console.log(old)
-    if (old === null) {
+    if (!old) {
       return null
     }
 
@@ -935,7 +945,7 @@ var Checkers = function (fen) {
 
     var us = turn
     var them = swap_color(turn)
-    // console.log(position, 'before')
+    console.log(position, 'before', move)
     position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece)
     position = position.setCharAt(convertNumber(move.to, 'internal'), 0)
     if (move.flags === 'c') {
@@ -945,7 +955,7 @@ var Checkers = function (fen) {
     } else if (move.flags === 'p') {
       position = position.setCharAt(convertNumber(move.from, 'internal'), move.piece.toLowerCase())
     }
-    // console.log(position, 'after')
+    console.log(position, 'after')
     return move
   }
 
@@ -979,7 +989,7 @@ var Checkers = function (fen) {
   function longestCapture (captures) {
     var maxJumpCount = 0
     for (var i = 0; i < captures.length; i++) {
-      // console.log(captures[i])
+      console.log(captures[i])
       var jumpCount = captures[i].jumps.length
       if (jumpCount > maxJumpCount) {
         maxJumpCount = jumpCount
@@ -1016,6 +1026,7 @@ var Checkers = function (fen) {
         moveObject.takes[j] = convertNumber(moves[i].takes[j], type)
       }
       moveObject.to = convertNumber(moves[i].to, type)
+      moveObject.piecesTaken = moves[i].piecesTaken
       tempMoves.push(moveObject)
     }
     return tempMoves
@@ -1165,7 +1176,7 @@ var Checkers = function (fen) {
     var tempHistory = clone(history)
     var moveHistory = []
     var verbose = (typeof options !== 'undefined' && 'verbose' in options && options.verbose)
-
+// console.log(history);
     while (tempHistory.length > 0) {
       var move = tempHistory.shift()
       // console.log(move)
