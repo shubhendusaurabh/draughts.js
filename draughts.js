@@ -60,7 +60,7 @@
 ||
 ||==================================================================================
 */
-var Checkers = function (fen) {
+var Draughts = function (fen) {
   var BLACK = 'B'
   var WHITE = 'W'
   // var EMPTY = -1
@@ -989,7 +989,7 @@ var Checkers = function (fen) {
   function longestCapture (captures) {
     var maxJumpCount = 0
     for (var i = 0; i < captures.length; i++) {
-      console.log(captures[i])
+      // console.log(captures[i])
       var jumpCount = captures[i].jumps.length
       if (jumpCount > maxJumpCount) {
         maxJumpCount = jumpCount
@@ -1357,12 +1357,12 @@ var Checkers = function (fen) {
 }
 
 if (typeof exports !== 'undefined') {
-  exports.Checkers = Checkers
+  exports.Draughts = Draughts
 }
 
 if (typeof define !== 'undefined') {
   define(function () {
-    return Checkers
+    return Draughts
   })
 }
 
