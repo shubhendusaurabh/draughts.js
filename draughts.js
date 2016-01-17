@@ -697,7 +697,7 @@ var Draughts = function (fen) {
     var captures = []
 
     if (square) {
-      moves = getLegalMoves(square)
+      moves = getLegalMoves(square.square)
     } else {
       var tempCaptures = getCaptures();
       // TODO change to be applicable to array
@@ -738,7 +738,7 @@ var Draughts = function (fen) {
     }
     // TODO called on hover ??
     // console.log(legalMoves)
-    return legalMoves
+    return convertMoves(legalMoves, 'external')
   }
 
   function getMoves (index) {
@@ -1013,7 +1013,7 @@ var Draughts = function (fen) {
   function convertMoves (moves, type) {
     // console.log(moves)
     var tempMoves = []
-    if (!type) {
+    if (!type || moves.length === 0) {
       return tempMoves
     }
     for (var i = 0; i < moves.length; i++) {
