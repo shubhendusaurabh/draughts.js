@@ -157,7 +157,7 @@ var Draughts = function (fen) {
     var externalPosition = DEFAULT_POSITION_EXTERNAL
     for (var i = 1; i <= externalPosition.length; i++) {
       // console.log(externalPosition[i])
-      externalPosition = externalPosition.setCharAt(convertNumber(i, 'internal'), '0')
+      externalPosition = externalPosition.setCharAt(i, '0')
     }
     externalPosition = externalPosition.setCharAt(0, turn)
     // console.log(position, turn)
@@ -185,14 +185,14 @@ var Draughts = function (fen) {
           }
         } else {
           var numSquare = parseInt(numSquare, 10)
-          // console.log(position, 'else')
+          // console.log(externalPosition, numSquare, 'else', color)
           externalPosition = externalPosition.setCharAt(numSquare, (isKing === true ? color.toUpperCase() : color.toLowerCase()))
         // put({type: color.toLowerCase(), color: color})
         }
       }
     }
 
-    // console.log(position)
+    // console.log(position, externalPosition)
     position = convertPosition(externalPosition, 'internal')
     update_setup(generate_fen(position))
 
@@ -336,7 +336,7 @@ var Draughts = function (fen) {
           black.push(i)
           break
         case 'B':
-          black.push(i)
+          black.push('K' + i)
           break
         default:
           break
