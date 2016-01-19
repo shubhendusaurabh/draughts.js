@@ -1,6 +1,6 @@
 if (typeof require != "undefined") {
   var chai = require('chai');
-  var Draughts = require('draughts').Draughts;
+  var Draughts = require('./draughts').Draughts;
 }
 
 var assert = chai.assert;

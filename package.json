@@ -3,8 +3,14 @@
   "version": "0.0.1",
   "description": "A javascript checkers library for move generation/validation, piece placement/movement and draw detection",
   "main": "checkers.js",
+  "devDependencies": {
+    "mocha": "*",
+    "chai": "*",
+    "uglify-js": "*"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test":   "./node_modules/.bin/mocha",
+    "minify": "./node_modules/.bin/uglifyjs chess.js -c -m --comments 'license' > chess.min.js"
   },
   "repository": {
     "type": "git",
@@ -12,7 +18,7 @@
   },
   "keywords": [
     "checkers",
-    "draught"
+    "draughts"
   ],
   "author": "shubhu",
   "license": "MPL-2.0",
