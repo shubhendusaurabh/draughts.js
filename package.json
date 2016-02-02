@@ -9,7 +9,7 @@
     "uglify-js": "*"
   },
   "scripts": {
-    "test":   "./node_modules/.bin/mocha",
+    "test":   "./node_modules/.bin/mocha ./tests.js",
     "minify": "./node_modules/.bin/uglifyjs chess.js -c -m --comments 'license' > chess.min.js"
   },
   "repository": {

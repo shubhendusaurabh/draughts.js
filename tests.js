@@ -228,9 +228,9 @@ describe("PDN", function() {
       }
 
       draughts.header.apply(null, position.header);
-      var pgn = draughts.pgn({max_width:position.max_width, newline_char:position.newline_char});
+      var pdn = draughts.pdn({max_width:position.max_width, newline_char:position.newline_char});
       var fen = draughts.fen();
-      passed = pgn === position.pgn && fen === position.fen;
+      passed = pdn === position.pdn && fen === position.fen;
       assert(passed && error_message.length == 0);
     });
 
@@ -250,21 +250,21 @@ describe("Load PDN", function() {
   tests.forEach(function(t, i) {
     newline_chars.forEach(function(newline, j) {
       it(i + String.fromCharCode(97 + j), function() {
-        var result = draughts.load_pgn(t.pgn.join(newline), { newline_char: newline });
+        var result = draughts.load_pdn(t.pdn.join(newline), { newline_char: newline });
         var should_pass = t.expect;
 
         /* some tests are expected to fail */
         if (should_pass) {
 
-        /* some PGN's tests contain comments which are stripped during parsing,
+        /* some pdn's tests contain comments which are stripped during parsing,
          * so we'll need compare the results of the load against a FEN string
-         * (instead of the reconstructed PGN [e.g. test.pgn.join(newline)])
+         * (instead of the reconstructed pdn [e.g. test.pdn.join(newline)])
          */
 
           if ('fen' in t) {
             assert(result && draughts.fen() == t.fen);
           } else {
-            assert(result && draughts.pgn({ max_width: 65, newline_char: newline }) == t.pgn.join(newline));
+            assert(result && draughts.pdn({ max_width: 65, newline_char: newline }) == t.pdn.join(newline));
           }
         } else {
           /* this test should fail, so make sure it does */
@@ -279,11 +279,11 @@ describe("Load PDN", function() {
   // special case dirty file containing a mix of \n and \r\n
   it('dirty pdn', function() {
     var pdn;
-    var result = draughts.load_pgn(pgn, { newline_char: '\r?\n' });
+    var result = draughts.load_pdn(pdn, { newline_char: '\r?\n' });
     assert(result);
 
-    assert(draughts.load_pgn(pgn));
-    assert(draughts.pgn().match(/^\[\[/) === null);
+    assert(draughts.load_pdn(pdn));
+    assert(draughts.pdn().match(/^\[\[/) === null);
   });
 
 });
