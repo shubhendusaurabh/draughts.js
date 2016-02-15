@@ -82,9 +82,9 @@ var Draughts = function (fen) {
   var UNICODES = {
     'w': '\u26C0',
     'b': '\u26C2',
-    'B': '\u26C1',
-    'W': '\u26C3',
-    '0': '  '
+    'B': '\u26C3',
+    'W': '\u26C1',
+    '0': '\u0020\u0020'
   }
 
   var SIGNS = {
@@ -1301,7 +1301,7 @@ var Draughts = function (fen) {
     ascii: ascii,
 
     turn: function () {
-      return turn
+      return turn.toLowerCase()
     },
 
     move: function move (move) {
