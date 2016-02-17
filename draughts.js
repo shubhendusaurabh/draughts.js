@@ -1284,6 +1284,10 @@ var Draughts = function (fen) {
 
     gameOver: gameOver,
 
+    inDraw: function () {
+      return false;
+    },
+
     validate_fen: validate_fen,
 
     fen: generate_fen,
