@@ -1,5 +1,5 @@
 {
-  "name": "checkers.js",
+  "name": "draughts.js",
   "version": "0.0.1",
   "description": "A javascript checkers library for move generation/validation, piece placement/movement and draw detection",
   "main": "draughts.js",
