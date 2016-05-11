@@ -1,7 +1,7 @@
 {
-  "name": "draughts.js",
+  "name": "draughts",
   "version": "0.0.1",
-  "description": "A javascript checkers library for move generation/validation, piece placement/movement and draw detection",
+  "description": "A javascript draughts library for move generation/validation, piece placement/movement and draw detection",
   "main": "draughts.js",
   "devDependencies": {
     "mocha": "*",
@@ -10,11 +10,11 @@
   },
   "scripts": {
     "test":   "./node_modules/.bin/mocha ./tests.js",
-    "minify": "./node_modules/.bin/uglifyjs chess.js -c -m --comments 'license' > chess.min.js"
+    "minify": "./node_modules/.bin/uglifyjs draughts.js -c -m --comments 'license' > draughts.min.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shubhendusaurabh/checkers.js.git"
+    "url": "git+https://github.com/shubhendusaurabh/draughts.js.git"
   },
   "keywords": [
     "checkers",
@@ -23,7 +23,7 @@
   "author": "shubhu",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/shubhendusaurabh/checkers.js/issues"
+    "url": "https://github.com/shubhendusaurabh/draughts.js/issues"
   },
-  "homepage": "https://github.com/shubhendusaurabh/checkers.js#readme"
+  "homepage": "https://github.com/shubhendusaurabh/draughts.js#readme"
 }
