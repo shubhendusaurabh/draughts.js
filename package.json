@@ -2,7 +2,7 @@
   "name": "checkers.js",
   "version": "0.0.1",
   "description": "A javascript checkers library for move generation/validation, piece placement/movement and draw detection",
-  "main": "checkers.js",
+  "main": "draughts.js",
   "devDependencies": {
     "mocha": "*",
     "chai": "*",
