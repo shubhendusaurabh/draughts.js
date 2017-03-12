@@ -882,6 +882,11 @@ var Draughts = function (fen) {
         position = setCharAt(position, convertNumber(move.captures[i], 'internal'), move.piecesCaptured[i])
       }
     } else if (move.flags === 'p') {
+      if (move.captures) {
+        for (var i = 0; i < move.captures.length; i += 1) {
+          position = setCharAt(position, convertNumber(move.captures[i], 'internal'), move.piecesCaptured[i])
+        }
+      }
       position = setCharAt(position, convertNumber(move.from, 'internal'), move.piece.toLowerCase())
     }
     return move
