@@ -644,7 +644,7 @@ var Draughts = function (fen) {
     var moves = []
 
     if (square) {
-      moves = getLegalMoves(square.square)
+      moves = getLegalMoves(square)
     } else {
       var tempCaptures = getCaptures()
       // TODO change to be applicable to array
