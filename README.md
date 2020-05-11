@@ -1,19 +1,25 @@
-A Javascript checkers library for move generation/validation, piece placement/movement, and draw detection
-# draughts.js
+A Javascript draughts or checkers library for move generation/validation, piece placement/movement, and draw detection.
 
-<!-- [![Build Status](https://travis-ci.org/jhlywa/draughts.js.svg?branch=master)](https://travis-ci.org/jhlywa/draughts.js) -->
+Inspired from [chess.js](https://github.com/jhlywa/chess.js)
+
+# draughts.js
 
 draughts.js is a Javascript draughts library that is used for draughts move
 generation/validation, piece placement/movement, and game status
 detection - basically everything but the AI.
 
-draughts.js is in development and pending testing.
+draughts.js is in development.
+
+## Installation
+Download the `draughts.js` file & include it in your html page.
+```
+<script src="/js/draughts.js"></script>
+```
 
 ## Example Code
 The code below plays a complete game of draughts ... randomly.
 
 ```js
-var draughts = require('./draughts').draughts;
 var draughts = new Draughts();
 
 while (!draughts.game_over()) {
@@ -26,7 +32,7 @@ console.log(draughts.pdn());
 
 ## Sites Using draughts.js
 
-- Add your site here
+- [Checkers/Draughts online](https://www.shubhu.in/checkers-online/)
 
 Need a user interface?  Try [draughtsboardJS](http://github.com/shubhendusaurabh/draughtsboardJS) library.
 
@@ -256,6 +262,29 @@ draughts.moves();
 
 ```
 
+### .getLegalMoves(squareNum)
+Returns a list of legals moves from the given square.
+
+```js
+var draughts = new Draughts();
+draughts.getLegalMoves();
+// -> [
+  {
+    "jumps": [],
+    "takes": [],
+    "from": 32,
+    "to": 28
+  },
+  {
+    "jumps": [],
+    "takes": [],
+    "from": 32,
+    "to": 27
+  }
+]
+
+```
+
 ### .pdn([ options ])
 Returns the game in pdn format. Options is an optional parameter which may include
 max width and/or a newline character settings.
@@ -342,6 +371,7 @@ draughts.validate_fen('4r3/8/X12XPk/1p6/pP2p1R1/P1B5/2P2K2/3r4 w - - 1 45');
 
 ## BUGS
 
+- Piece promotion may be buggy.
 
 ## TODO
 
