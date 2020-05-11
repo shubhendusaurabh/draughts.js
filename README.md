@@ -1,3 +1,5 @@
+# Maintainers Wanted
+
 A Javascript draughts or checkers library for move generation/validation, piece placement/movement, and draw detection.
 
 Inspired from [chess.js](https://github.com/jhlywa/chess.js)
