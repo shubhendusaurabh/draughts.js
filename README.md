@@ -1,5 +1,3 @@
-# Maintainers Wanted
-
 A Javascript draughts or checkers library for move generation/validation, piece placement/movement, and draw detection.
 
 Inspired from [chess.js](https://github.com/jhlywa/chess.js)
@@ -370,6 +368,9 @@ draughts.validate_fen('4r3/8/X12XPk/1p6/pP2p1R1/P1B5/2P2K2/3r4 w - - 1 45');
 // -> {error: {code: 1, message: "fen position is not a string"}, valid: false }
 ```
 
+## Maintainers
+- [@petitlapin](https://github.com/petitlapin)
+- [@Richienb](https://github.com/Richienb)
 
 ## BUGS
 
