@@ -1,5 +1,57 @@
 'use strict'
 
+/**
+ * @typedef {Object} MoveObject
+ * @property {number} from - Source square number (1-50)
+ * @property {number} to - Destination square number (1-50)
+ * @property {string} flags - Move flags: 'n' (normal), 'c' (capture), 'p' (promotion)
+ * @property {string} piece - The piece being moved ('b', 'B', 'w', 'W')
+ * @property {number[]} [takes] - Array of captured piece positions
+ * @property {number[]} [captures] - Alias for takes (captured piece positions)
+ * @property {string[]} [piecesCaptured] - Array of captured pieces
+ * @property {string[]} [piecesTaken] - Alias for piecesCaptured
+ * @property {number[]} [jumps] - Array of positions in the jump sequence
+ */
+
+/**
+ * @typedef {Object} ValidationResult
+ * @property {boolean} valid - Whether the FEN is valid
+ * @property {Object} [error] - Error object if validation fails
+ * @property {number} [error.code] - Error code
+ * @property {string} [error.message] - Error message
+ * @property {string} fen - The original FEN string
+ */
+
+/**
+ * @typedef {Object} HistoryEntry
+ * @property {MoveObject} move - The move that was made
+ * @property {string} turn - The player who made the move ('B' or 'W')
+ * @property {number} moveNumber - The move number
+ */
+
+/**
+ * @typedef {Object} GameState
+ * @property {string} position - Internal position representation (56 chars)
+ * @property {string} turn - Current player turn ('B' or 'W')
+ * @property {number} moveNumber - Current move number
+ * @property {HistoryEntry[]} history - Game move history
+ * @property {Object<string, string>} header - PDN header information
+ */
+
+/**
+ * @typedef {Object} CaptureState
+ * @property {string} position - Current board position
+ * @property {string} dirFrom - Direction came from (to avoid backtracking)
+ */
+
+/**
+ * @typedef {Object} DirectionStrings
+ * @property {string} NE - Northeast direction string
+ * @property {string} SE - Southeast direction string
+ * @property {string} SW - Southwest direction string
+ * @property {string} NW - Northwest direction string
+ */
+
 /*
 ||==================================================================================
 || DESCRIPTION OF IMPLEMENTATION PRINCIPLES
@@ -60,26 +112,30 @@
 ||
 ||==================================================================================
 */
-var Draughts = function (fen) {
-  var BLACK = 'B'
-  var WHITE = 'W'
-  // var EMPTY = -1
-  var MAN = 'b'
-  var KING = 'w'
-  var SYMBOLS = 'bwBW'
-  var DEFAULT_FEN = 'W:W31-50:B1-20'
-  var position
-  var DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-'
-  var DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww'
-  var STEPS = {NE: -5, SE: 6, SW: 5, NW: -6}
-  var POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*', '1-0', '0-1']
-  var FLAGS = {
+/**
+ * Creates a new Draughts game instance
+ * @param {string} [fen] - FEN string to initialize the game position
+ * @constructor
+ */
+function Draughts(fen) {
+  // Game constants
+  const BLACK = 'B'
+  const WHITE = 'W'
+  const MAN = 'b'
+  const KING = 'w'
+  const SYMBOLS = 'bwBW'
+  const DEFAULT_FEN = 'W:W31-50:B1-20'
+  const DEFAULT_POSITION_INTERNAL = '-bbbbbbbbbb-bbbbbbbbbb-0000000000-wwwwwwwwww-wwwwwwwwww-'
+  const DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww'
+  const STEPS = { NE: -5, SE: 6, SW: 5, NW: -6 }
+  const POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*', '1-0', '0-1']
+  const FLAGS = {
     NORMAL: 'n',
     CAPTURE: 'c',
     PROMOTION: 'p'
   }
 
-  var UNICODES = {
+  const UNICODES = {
     'w': '\u26C0',
     'b': '\u26C2',
     'B': '\u26C3',
@@ -87,30 +143,28 @@ var Draughts = function (fen) {
     '0': '\u0020\u0020'
   }
 
-  var SIGNS = {
+  const SIGNS = {
     n: '-',
     c: 'x'
   }
-  var BITS = {
+  const BITS = {
     NORMAL: 1,
     CAPTURE: 2,
     PROMOTION: 4
   }
 
-  var turn = WHITE
-  var moveNumber = 1
-  var history = []
-  var header = {}
+  // Game state variables
+  let position
+  let turn = WHITE
+  let moveNumber = 1
+  let history = []
+  let header = {}
 
-  if (!fen) {
-    position = DEFAULT_POSITION_INTERNAL
-    load(DEFAULT_FEN)
-  } else {
-    position = DEFAULT_POSITION_INTERNAL
-    load(fen)
-  }
-
-  function clear () {
+  /**
+   * Clears the board to empty state
+   * @returns {void}
+   */
+  const clear = () => {
     position = DEFAULT_POSITION_INTERNAL
     turn = WHITE
     moveNumber = 1
@@ -119,20 +173,28 @@ var Draughts = function (fen) {
     update_setup(generate_fen())
   }
 
-  function reset () {
+  /**
+   * Resets the game to the starting position
+   * @returns {void}
+   */
+  const reset = () => {
     load(DEFAULT_FEN)
   }
 
-  function load (fen) {
-    // TODO for default fen
+  /**
+   * Loads a position from FEN string
+   * @param {string} fen - FEN string representing the position
+   * @returns {boolean} True if FEN was loaded successfully, false otherwise
+   */
+  const load = (fen) => {
+    // Handle default FEN
     if (!fen || fen === DEFAULT_FEN) {
       position = DEFAULT_POSITION_INTERNAL
       update_setup(generate_fen(position))
       return true
     }
-    // fen_constants(dimension) //TODO for empty fens
 
-    var checkedFen = validate_fen(fen)
+    const checkedFen = validate_fen(fen)
     if (!checkedFen.valid) {
       console.error('Fen Error', fen, checkedFen)
       return false
@@ -140,42 +202,43 @@ var Draughts = function (fen) {
 
     clear()
 
-    // remove spaces
-    fen = fen.replace(/\s+/g, '')
-    // remove suffixes
-    fen.replace(/\..*$/, '')
+    // Clean up FEN string
+    fen = fen.replace(/\s+/g, '').replace(/\..*$/, '')
 
-    var tokens = fen.split(':')
-    // which side to move
+    const tokens = fen.split(':')
+    // Set which side to move
     turn = tokens[0].substr(0, 1)
 
-    // var positions = new Array()
-    var externalPosition = DEFAULT_POSITION_EXTERNAL
-    for (var i = 1; i <= externalPosition.length; i++) {
+    let externalPosition = DEFAULT_POSITION_EXTERNAL
+    for (let i = 1; i <= externalPosition.length; i++) {
       externalPosition = setCharAt(externalPosition, i, 0)
     }
     externalPosition = setCharAt(externalPosition, 0, turn)
-    // TODO refactor
-    for (var k = 1; k <= 2; k++) {
-      // TODO called twice
-      var color = tokens[k].substr(0, 1)
-      var sideString = tokens[k].substr(1)
+
+    // Process both sides (white and black)
+    for (let k = 1; k <= 2; k++) {
+      const color = tokens[k].substr(0, 1)
+      const sideString = tokens[k].substr(1)
       if (sideString.length === 0) continue
-      var numbers = sideString.split(',')
-      for (i = 0; i < numbers.length; i++) {
-        var numSquare = numbers[i]
-        var isKing = (numSquare.substr(0, 1) === 'K')
-        numSquare = (isKing === true ? numSquare.substr(1) : numSquare) // strip K
-        var range = numSquare.split('-')
+      
+      const numbers = sideString.split(',')
+      for (let i = 0; i < numbers.length; i++) {
+        let numSquare = numbers[i]
+        const isKing = numSquare.substr(0, 1) === 'K'
+        numSquare = isKing ? numSquare.substr(1) : numSquare // strip K
+        
+        const range = numSquare.split('-')
         if (range.length === 2) {
-          var from = parseInt(range[0], 10)
-          var to = parseInt(range[1], 10)
-          for (var j = from; j <= to; j++) {
-            externalPosition = setCharAt(externalPosition, j, (isKing === true ? color.toUpperCase() : color.toLowerCase()))
+          const from = parseInt(range[0], 10)
+          const to = parseInt(range[1], 10)
+          for (let j = from; j <= to; j++) {
+            const pieceChar = isKing ? color.toUpperCase() : color.toLowerCase()
+            externalPosition = setCharAt(externalPosition, j, pieceChar)
           }
         } else {
-          numSquare = parseInt(numSquare, 10)
-          externalPosition = setCharAt(externalPosition, numSquare, (isKing === true ? color.toUpperCase() : color.toLowerCase()))
+          const squareNum = parseInt(numSquare, 10)
+          const pieceChar = isKing ? color.toUpperCase() : color.toLowerCase()
+          externalPosition = setCharAt(externalPosition, squareNum, pieceChar)
         }
       }
     }
@@ -186,159 +249,150 @@ var Draughts = function (fen) {
     return true
   }
 
-  function validate_fen (fen) {
-    var errors = [
-      {
-        code: 0,
-        message: 'no errors'
-      },
-      {
-        code: 1,
-        message: 'fen position not a string'
-      },
-      {
-        code: 2,
-        message: 'fen position has not colon at second position'
-      },
-      {
-        code: 3,
-        message: 'fen position has not 2 colons'
-      },
-      {
-        code: 4,
-        message: 'side to move of fen position not valid'
-      },
-      {
-        code: 5,
-        message: 'color(s) of sides of fen position not valid'
-      },
-      {
-        code: 6,
-        message: 'squares of fen position not integer'
-      },
-      {
-        code: 7,
-        message: 'squares of fen position not valid'
-      },
-      {
-        code: 8,
-        message: 'empty fen position'
-      }
+  /**
+   * Validates a FEN string for correctness
+   * @param {string} fen - FEN string to validate
+   * @returns {ValidationResult} Object containing validation result and error info
+   */
+  const validate_fen = (fen) => {
+    const errors = [
+      { code: 0, message: 'no errors' },
+      { code: 1, message: 'fen position not a string' },
+      { code: 2, message: 'fen position has not colon at second position' },
+      { code: 3, message: 'fen position has not 2 colons' },
+      { code: 4, message: 'side to move of fen position not valid' },
+      { code: 5, message: 'color(s) of sides of fen position not valid' },
+      { code: 6, message: 'squares of fen position not integer' },
+      { code: 7, message: 'squares of fen position not valid' },
+      { code: 8, message: 'empty fen position' }
     ]
 
     if (typeof fen !== 'string') {
-      return {valid: false, error: errors[0], fen: fen}
+      return { valid: false, error: errors[0], fen }
     }
 
     fen = fen.replace(/\s+/g, '')
 
+    // Handle empty FEN exceptions
     if (fen === 'B::' || fen === 'W::' || fen === '?::') {
-      return {valid: true, fen: fen + ':B:W'} // exception allowed i.e. empty fen
+      return { valid: true, fen: `${fen}:B:W` }
     }
-    fen = fen.trim()
-    fen = fen.replace(/\..*$/, '')
+    
+    fen = fen.trim().replace(/\..*$/, '')
 
     if (fen === '') {
-      return {valid: false, error: errors[7], fen: fen}
+      return { valid: false, error: errors[7], fen }
     }
 
     if (fen.substr(1, 1) !== ':') {
-      return {valid: false, error: errors[1], fen: fen}
+      return { valid: false, error: errors[1], fen }
     }
 
-    // fen should be 3 sections separated by colons
-    var parts = fen.split(':')
+    // FEN should be 3 sections separated by colons
+    const parts = fen.split(':')
     if (parts.length !== 3) {
-      return {valid: false, error: errors[2], fen: fen}
+      return { valid: false, error: errors[2], fen }
     }
 
-    //  which side to move
-    var turnColor = parts[0]
-    if (turnColor !== 'B' && turnColor !== 'W' && turnColor !== '?') {
-      return {valid: false, error: errors[3], fen: fen}
+    // Validate side to move
+    const turnColor = parts[0]
+    if (!['B', 'W', '?'].includes(turnColor)) {
+      return { valid: false, error: errors[3], fen }
     }
 
-    // check colors of both sides
-    var colors = parts[1].substr(0, 1) + parts[2].substr(0, 1)
-    if (colors !== 'BW' && colors !== 'WB') {
-      return {valid: false, error: errors[4], fen: fen}
+    // Check colors of both sides
+    const colors = parts[1].substr(0, 1) + parts[2].substr(0, 1)
+    if (!['BW', 'WB'].includes(colors)) {
+      return { valid: false, error: errors[4], fen }
     }
 
-    // check parts for both sides
-    for (var k = 1; k <= 2; k += 1) {
-      var sideString = parts[k].substr(1) // Stripping color
-      if (sideString.length === 0) {
-        continue
-      }
-      var numbers = sideString.split(',')
-      for (var i = 0; i < numbers.length; i++) {
-        var numSquare = numbers[i]
-        var isKing = (numSquare.substr(0, 1) === 'K')
-        numSquare = (isKing === true ? numSquare.substr(1) : numSquare)
-        var range = numSquare.split('-')
+    // Validate pieces for both sides
+    for (let k = 1; k <= 2; k++) {
+      const sideString = parts[k].substr(1) // Strip color
+      if (sideString.length === 0) continue
+      
+      const numbers = sideString.split(',')
+      for (const numberStr of numbers) {
+        let numSquare = numberStr
+        const isKing = numSquare.substr(0, 1) === 'K'
+        numSquare = isKing ? numSquare.substr(1) : numSquare
+        
+        const range = numSquare.split('-')
         if (range.length === 2) {
-          if (isInteger(range[0]) === false) {
-            return {valid: false, error: errors[5], fen: fen, range: range[0]}
-          }
-          if (!(range[0] >= 1 && range[0] <= 100)) {
-            return {valid: false, error: errors[6], fen: fen}
-          }
-          if (isInteger(range[1]) === false) {
-            return {valid: false, error: errors[5], fen: fen}
-          }
-          if (!(range[1] >= 1 && range[1] <= 100)) {
-            return {valid: false, error: errors[6], fen: fen}
+          // Validate range
+          for (const rangeVal of range) {
+            if (!isInteger(rangeVal)) {
+              return { valid: false, error: errors[5], fen, range: rangeVal }
+            }
+            const num = parseInt(rangeVal, 10)
+            if (num < 1 || num > 100) {
+              return { valid: false, error: errors[6], fen }
+            }
           }
         } else {
-          if (isInteger(numSquare) === false) {
-            return {valid: false, error: errors[5], fen: fen}
+          // Validate single square
+          if (!isInteger(numSquare)) {
+            return { valid: false, error: errors[5], fen }
           }
-          if (!(numSquare >= 1 && numSquare <= 100)) {
-            return {valid: false, error: errors[6], fen: fen}
+          const num = parseInt(numSquare, 10)
+          if (num < 1 || num > 100) {
+            return { valid: false, error: errors[6], fen }
           }
         }
       }
     }
 
-    return {valid: true, error_number: 0, error: errors[0]}
+    return { valid: true, error_number: 0, error: errors[0] }
   }
 
-  function generate_fen () {
-    var black = []
-    var white = []
-    var externalPosition = convertPosition(position, 'external')
-    for (var i = 0; i < externalPosition.length; i++) {
-      switch (externalPosition[i]) {
+  /**
+   * Generates FEN string from current position
+   * @returns {string} FEN string representing the current position
+   */
+  const generate_fen = () => {
+    const black = []
+    const white = []
+    const externalPosition = convertPosition(position, 'external')
+    
+    for (let i = 0; i < externalPosition.length; i++) {
+      const piece = externalPosition[i]
+      switch (piece) {
         case 'w':
           white.push(i)
           break
         case 'W':
-          white.push('K' + i)
+          white.push(`K${i}`)
           break
         case 'b':
           black.push(i)
           break
         case 'B':
-          black.push('K' + i)
+          black.push(`K${i}`)
           break
         default:
+          // Empty square or invalid piece
           break
       }
     }
-    return turn.toUpperCase() + ':W' + white.join(',') + ':B' + black.join(',')
+    
+    return `${turn.toUpperCase()}:W${white.join(',')}:B${black.join(',')}`
   }
 
-  function generatePDN (options) {
-    // for html usage {maxWidth: 72, newline_char: "<br />"}
-    var newline = (typeof options === 'object' && typeof options.newline_char === 'string')
-      ? options.newline_char : '\n'
-    var maxWidth = (typeof options === 'object' && typeof options.maxWidth === 'number')
-      ? options.maxWidth : 0
-    var result = []
-    var headerExists = false
+  /**
+   * Generates PDN (Portable Draughts Notation) string from current game
+   * @param {Object} [options] - Options for PDN generation
+   * @param {string} [options.newline_char='\n'] - Character to use for newlines
+   * @param {number} [options.maxWidth=0] - Maximum line width (0 = no limit)
+   * @returns {string} PDN string representing the game
+   */
+  const generatePDN = (options = {}) => {
+    const { newline_char: newline = '\n', maxWidth = 0 } = options
+    const result = []
+    let headerExists = false
 
-    for (var i in header) {
-      result.push('[' + i + ' "' + header[i] + '"]' + newline)
+    // Add header information
+    for (const [key, value] of Object.entries(header)) {
+      result.push(`[${key} "${value}"]${newline}`)
       headerExists = true
     }
 
@@ -346,34 +400,29 @@ var Draughts = function (fen) {
       result.push(newline)
     }
 
-    var tempHistory = clone(history)
+    const tempHistory = clone(history)
+    const moves = []
+    let moveString = ''
+    let moveNum = 1
 
-    var moves = []
-    var moveString = ''
-    var moveNumber = 1
-
+    // Process move history
     while (tempHistory.length > 0) {
-      var move = tempHistory.shift()
-      if (move.turn === 'W') {
-        moveString += moveNumber + '. '
+      const historyEntry = tempHistory.shift()
+      if (historyEntry.turn === 'W') {
+        moveString += `${moveNum}. `
       }
-      moveString += move.move.from
-      if (move.move.flags === 'c') {
-        moveString += 'x'
-      } else {
-        moveString += '-'
-      }
-      moveString += move.move.to
-      moveString += ' '
-      moveNumber += 1
+      moveString += historyEntry.move.from
+      moveString += historyEntry.move.flags === 'c' ? 'x' : '-'
+      moveString += `${historyEntry.move.to} `
+      moveNum++
     }
 
     if (moveString.length) {
       moves.push(moveString)
     }
 
-    // TODO resutl from pdn or header??
-    if (typeof header.Result !== 'undefined') {
+    // Add game result if available
+    if (header.Result !== undefined) {
       moves.push(header.Result)
     }
 
@@ -381,13 +430,13 @@ var Draughts = function (fen) {
       return result.join('') + moves.join(' ')
     }
 
-    var currentWidth = 0
-    for (i = 0; i < moves.length; i++) {
+    // Handle line width constraints
+    let currentWidth = 0
+    for (let i = 0; i < moves.length; i++) {
       if (currentWidth + moves[i].length > maxWidth && i !== 0) {
         if (result[result.length - 1] === ' ') {
           result.pop()
         }
-
         result.push(newline)
         currentWidth = 0
       } else if (i !== 0) {
@@ -401,8 +450,13 @@ var Draughts = function (fen) {
     return result.join('')
   }
 
-  function set_header (args) {
-    for (var i = 0; i < args.length; i += 2) {
+  /**
+   * Sets header properties from arguments array
+   * @param {string[]} args - Array of alternating key-value pairs
+   * @returns {Object<string, string>} Updated header object
+   */
+  const set_header = (args) => {
+    for (let i = 0; i < args.length; i += 2) {
       if (typeof args[i] === 'string' && typeof args[i + 1] === 'string') {
         header[args[i]] = args[i + 1]
       }
@@ -410,69 +464,83 @@ var Draughts = function (fen) {
     return header
   }
 
-  /* called when the initial board setup is changed with put() or remove().
-   * modifies the SetUp and FEN properties of the header object.  if the FEN is
-   * equal to the default position, the SetUp and FEN are deleted
-   * the setup is only updated if history.length is zero, ie moves haven't been
-   * made.
+  /**
+   * Updates setup properties in header when board position changes
+   * Only updates if no moves have been made yet
+   * @param {string} fen - FEN string of current position
+   * @returns {boolean|void} False if moves have been made, void otherwise
    */
-  function update_setup (fen) {
+  const update_setup = (fen) => {
     if (history.length > 0) {
       return false
     }
     if (fen !== DEFAULT_FEN) {
-      header['SetUp'] = '1'
-      header['FEN'] = fen
+      header.SetUp = '1'
+      header.FEN = fen
     } else {
-      delete header['SetUp']
-      delete header['FEN']
+      delete header.SetUp
+      delete header.FEN
     }
   }
 
-  function parsePDN (pdn, options) {
-    var newline_char = (typeof options === 'object' &&
-    typeof options.newline_char === 'string')
-      ? options.newline_char : '\r?\n'
-    var regex = new RegExp('^(\\[(.|' + mask(newline_char) + ')*\\])' +
-      '(' + mask(newline_char) + ')*' +
-      '1.(' + mask(newline_char) + '|.)*$', 'g')
+  /**
+   * Parses a PDN (Portable Draughts Notation) string and loads the game
+   * @param {string} pdn - PDN string to parse
+   * @param {Object} [options] - Parsing options
+   * @param {string} [options.newline_char='\r?\n'] - Newline character pattern
+   * @returns {boolean} True if PDN was parsed successfully, false otherwise
+   */
+  const parsePDN = (pdn, options = {}) => {
+    const { newline_char = '\r?\n' } = options
+    
+    /**
+     * Escapes special regex characters
+     * @param {string} str - String to escape
+     * @returns {string} Escaped string
+     */
+    const mask = (str) => str.replace(/\\/g, '\\')
+    
+    const regex = new RegExp(`^(\\[(.|${mask(newline_char)})*\\])` +
+      `(${mask(newline_char)})*` +
+      `1.(${mask(newline_char)}|.)*$`, 'g')
 
-    function mask (str) {
-      return str.replace(/\\/g, '\\')
-    }
-
-    function parsePDNHeader (header, options) {
-      var headerObj = {}
-      var headers = header.split(new RegExp(mask(newline_char)))
-      var key = ''
-      var value = ''
-
-      for (var i = 0; i < headers.length; i++) {
-        key = headers[i].replace(/^\[([A-Z][A-Za-z]*)\s.*\]$/, '$1')
-        value = headers[i].replace(/^\[[A-Za-z]+\s"(.*)"\]$/, '$1')
+    /**
+     * Parses PDN header section
+     * @param {string} headerStr - Header string to parse
+     * @param {Object} opts - Options object
+     * @returns {Object<string, string>} Parsed header object
+     */
+    const parsePDNHeader = (headerStr, opts) => {
+      const headerObj = {}
+      const headers = headerStr.split(new RegExp(mask(newline_char)))
+      
+      for (const headerLine of headers) {
+        const key = headerLine.replace(/^\[([A-Z][A-Za-z]*)\s.*\]$/, '$1')
+        const value = headerLine.replace(/^\[[A-Za-z]+\s"(.*)"\]$/, '$1')
         if (trim(key).length > 0) {
           headerObj[key] = value
         }
       }
-
       return headerObj
     }
 
-    var headerString = pdn.replace(regex, '$1')
+    let headerString = pdn.replace(regex, '$1')
     if (headerString[0] !== '[') {
       headerString = ''
     }
 
     reset()
 
-    var headers = parsePDNHeader(headerString, options)
+    const headers = parsePDNHeader(headerString, options)
 
-    for (var key in headers) {
-      set_header([key, headers[key]])
+    // Set header properties
+    for (const [key, value] of Object.entries(headers)) {
+      set_header([key, value])
     }
 
-    if (headers['Setup'] === '1') {
-      if (!(('FEN' in headers) && load(headers['FEN']))) {
+    // Handle custom setup
+    if (headers.Setup === '1') {
+      if (!('FEN' in headers) || !load(headers.FEN)) {
         console.error('fen invalid')
         return false
       }
@@ -480,109 +548,118 @@ var Draughts = function (fen) {
       position = DEFAULT_POSITION_INTERNAL
     }
 
-    /* delete header to get the moves */
-    var ms = pdn.replace(headerString, '').replace(new RegExp(mask(newline_char), 'g'), ' ')
+    // Extract moves from PDN
+    let moveStr = pdn.replace(headerString, '').replace(new RegExp(mask(newline_char), 'g'), ' ')
 
-    /* delete comments */
-    ms = ms.replace(/(\{[^}]+\})+?/g, '')
-
-    /* delete recursive annotation variations */
-    var rav_regex = /(\([^\(\)]+\))+?/g
-    while (rav_regex.test(ms)) {
-      ms = ms.replace(rav_regex, '')
+    // Clean up move string
+    moveStr = moveStr
+      .replace(/(\{[^}]+\})+?/g, '') // Remove comments
+      .replace(/\d+\./g, '') // Remove move numbers
+      .replace(/\.\.\./g, '') // Remove black-to-move indicators
+    
+    // Remove recursive annotation variations
+    const ravRegex = /(\([^\(\)]+\))+?/g
+    while (ravRegex.test(moveStr)) {
+      moveStr = moveStr.replace(ravRegex, '')
     }
 
-    /* delete move numbers */
-    // TODO not working for move numbers with space
-    ms = ms.replace(/\d+\./g, '')
-
-    /* delete ... indicating black to move */
-    ms = ms.replace(/\.\.\./g, '')
-
-    /* trim and get array of moves */
-    var moves = trim(ms).split(new RegExp(/\s+/))
-
-    /* delete empty entries */
+    // Parse moves
+    let moves = trim(moveStr).split(/\s+/)
     moves = moves.join(',').replace(/,,+/g, ',').split(',')
 
-    var move = ''
-    for (var half_move = 0; half_move < moves.length - 1; half_move += 1) {
-      move = getMoveObject(moves[half_move])
+    // Process moves
+    for (let halfMove = 0; halfMove < moves.length - 1; halfMove++) {
+      const move = getMoveObject(moves[halfMove])
       if (!move) {
         return false
-      } else {
-        makeMove(move)
       }
+      makeMove(move)
     }
 
-    var result = moves[moves.length - 1]
-    if (POSSIBLE_RESULTS.indexOf(result) > -1) {
-      if (headers['Result'] === 'undefined') {
-        set_header(['Result', result])
+    // Handle final move or result
+    const lastEntry = moves[moves.length - 1]
+    if (POSSIBLE_RESULTS.includes(lastEntry)) {
+      if (headers.Result === undefined) {
+        set_header(['Result', lastEntry])
       }
     } else {
-      move = getMoveObject(result)
+      const move = getMoveObject(lastEntry)
       if (!move) {
         return false
-      } else {
-        makeMove(move)
       }
+      makeMove(move)
     }
+    
     return true
   }
 
-  function getMoveObject (move) {
-    // TODO move flags for both capture and promote??
-    var tempMove = {}
-    var matches = move.split(/[x|-]/)
+  /**
+   * Creates a move object from algebraic notation
+   * @param {string} move - Move in algebraic notation (e.g., '1-5' or '1x10')
+   * @returns {MoveObject|false} Move object if valid, false otherwise
+   */
+  const getMoveObject = (move) => {
+    const tempMove = {}
+    const matches = move.split(/[x|-]/)
     tempMove.from = parseInt(matches[0], 10)
     tempMove.to = parseInt(matches[1], 10)
-    var moveType = move.match(/[x|-]/)[0]
-    if (moveType === '-') {
-      tempMove.flags = FLAGS.NORMAL
-    } else {
-      tempMove.flags = FLAGS.CAPTURE
-    }
+    
+    const moveTypeMatch = move.match(/[x|-]/)
+    if (!moveTypeMatch) return false
+    
+    const moveType = moveTypeMatch[0]
+    tempMove.flags = moveType === '-' ? FLAGS.NORMAL : FLAGS.CAPTURE
     tempMove.piece = position.charAt(convertNumber(tempMove.from, 'internal'))
-    var moves = getLegalMoves(tempMove.from)
-    moves = convertMoves(moves, 'external')
-    // if move legal then make move
-    for (var i = 0; i < moves.length; i += 1) {
-      if (tempMove.to === moves[i].to && tempMove.from === moves[i].from) {
-        if (moves[i].takes.length > 0) {
+    
+    const legalMoves = convertMoves(getLegalMoves(tempMove.from), 'external')
+    
+    // Find matching legal move
+    for (const legalMove of legalMoves) {
+      if (tempMove.to === legalMove.to && tempMove.from === legalMove.from) {
+        if (legalMove.takes.length > 0) {
           tempMove.flags = FLAGS.CAPTURE
-          tempMove.captures = moves[i].takes
-          tempMove.takes = moves[i].takes
-          tempMove.piecesCaptured = moves[i].piecesTaken
+          tempMove.captures = legalMove.takes
+          tempMove.takes = legalMove.takes
+          tempMove.piecesCaptured = legalMove.piecesTaken
         }
         return tempMove
       }
     }
-    console.log(moves, tempMove)
+    
+    console.log(legalMoves, tempMove)
     return false
   }
 
-  function makeMove (move) {
+  /**
+   * Executes a move on the board
+   * @param {MoveObject} move - Move object to execute
+   * @returns {void}
+   */
+  const makeMove = (move) => {
     move.piece = position.charAt(convertNumber(move.from, 'internal'))
     position = setCharAt(position, convertNumber(move.to, 'internal'), move.piece)
     position = setCharAt(position, convertNumber(move.from, 'internal'), 0)
     move.flags = FLAGS.NORMAL
-    // TODO refactor to either takes or capture
+    
+    // Handle captures
     if (move.takes && move.takes.length) {
       move.flags = FLAGS.CAPTURE
       move.captures = move.takes
       move.piecesCaptured = move.piecesTaken
-      for (var i = 0; i < move.takes.length; i++) {
-        position = setCharAt(position, convertNumber(move.takes[i], 'internal'), 0)
+      for (const captureSquare of move.takes) {
+        position = setCharAt(position, convertNumber(captureSquare, 'internal'), 0)
       }
     }
-    // Promoting piece here
-    if (move.to <= 5 && move.piece === 'w') {
+    
+    // Handle promotions
+    const isWhitePromotion = move.to <= 5 && move.piece === 'w'
+    const isBlackPromotion = move.to >= 46 && move.piece === 'b'
+    
+    if (isWhitePromotion || isBlackPromotion) {
       move.flags = FLAGS.PROMOTION
       position = setCharAt(position, convertNumber(move.to, 'internal'), move.piece.toUpperCase())
-    } else if (move.to >= 46 && move.piece === 'b') {
-      position = setCharAt(position, convertNumber(move.to, 'internal'), move.piece.toUpperCase())
     }
+    
     push(move)
     if (turn === BLACK) {
       moveNumber += 1
@@ -590,41 +667,64 @@ var Draughts = function (fen) {
     turn = swap_color(turn)
   }
 
-  function get (square) {
-    var piece = position.charAt(convertNumber(square, 'internal'))
-    return piece
+  /**
+   * Gets the piece at a given square
+   * @param {number} square - Square number (1-50)
+   * @returns {string} Piece at square ('b', 'B', 'w', 'W', '0' for empty)
+   */
+  const get = (square) => {
+    return position.charAt(convertNumber(square, 'internal'))
   }
 
-  function put (piece, square) {
-    // check for valid piece string
-    if (SYMBOLS.match(piece) === null) {
+  /**
+   * Places a piece on a square
+   * @param {string} piece - Piece to place ('b', 'B', 'w', 'W')
+   * @param {number} square - Square number (1-50)
+   * @returns {boolean} True if piece was placed successfully, false otherwise
+   */
+  const put = (piece, square) => {
+    // Validate piece
+    if (!SYMBOLS.includes(piece)) {
       return false
     }
 
-    // check for valid square
-    if (outsideBoard(convertNumber(square, 'internal')) === true) {
+    // Validate square
+    if (outsideBoard(convertNumber(square, 'internal'))) {
       return false
     }
+    
     position = setCharAt(position, convertNumber(square, 'internal'), piece)
     update_setup(generate_fen())
-
     return true
   }
 
-  function remove (square) {
-    var piece = get(square)
+  /**
+   * Removes a piece from a square
+   * @param {number} square - Square number (1-50)
+   * @returns {string} The piece that was removed
+   */
+  const remove = (square) => {
+    const piece = get(square)
     position = setCharAt(position, convertNumber(square, 'internal'), 0)
     update_setup(generate_fen())
-
     return piece
   }
 
-  function build_move (board, from, to, flags, promotion) {
-    var move = {
+  /**
+   * Builds a move object with given parameters
+   * @param {Object} board - Board representation
+   * @param {number} from - Source square
+   * @param {number} to - Destination square
+   * @param {number} flags - Move flags (BITS constants)
+   * @param {boolean} promotion - Whether this is a promotion
+   * @returns {MoveObject} Constructed move object
+   */
+  const build_move = (board, from, to, flags, promotion) => {
+    const move = {
       color: turn,
-      from: from,
-      to: to,
-      flags: flags,
+      from,
+      to,
+      flags,
       piece: board[from].type
     }
 
@@ -637,397 +737,494 @@ var Draughts = function (fen) {
     } else if (flags & BITS.CAPTURE) {
       move.captured = MAN
     }
+    
     return move
   }
 
-  function generate_moves (square) {
-    var moves = []
+  /**
+   * Generates all legal moves for current position or specific square
+   * @param {number} [square] - Optional specific square to get moves for
+   * @returns {MoveObject[]} Array of legal move objects
+   */
+  const generate_moves = (square) => {
+    let moves = []
 
     if (square) {
       moves = getLegalMoves(square)
     } else {
-      var tempCaptures = getCaptures()
-      // TODO change to be applicable to array
-      if (tempCaptures.length) {
-        for (var i = 0; i < tempCaptures.length; i++) {
-          tempCaptures[i].flags = FLAGS.CAPTURE
-          tempCaptures[i].captures = tempCaptures[i].jumps
-          tempCaptures[i].piecesCaptured = tempCaptures[i].piecesTaken
-        }
-        return tempCaptures
+      const captures = getCaptures()
+      // Captures are mandatory - if available, return only captures
+      if (captures.length) {
+        return captures.map(capture => ({
+          ...capture,
+          flags: FLAGS.CAPTURE,
+          captures: capture.jumps,
+          piecesCaptured: capture.piecesTaken
+        }))
       }
       moves = getMoves()
     }
-    // TODO returns [] for on hovering for square no
-    moves = [].concat.apply([], moves)
-    return moves
+    
+    // Flatten nested arrays
+    return moves.flat()
   }
 
-  function getLegalMoves (index) {
-    var legalMoves
-    index = parseInt(index, 10)
-    if (!Number.isNaN(index)) {
-      index = convertNumber(index, 'internal')
-
-      var captures = capturesAtSquare(index, {position: position, dirFrom: ''}, {jumps: [index], takes: [], piecesTaken: []})
-
+  /**
+   * Gets all legal moves for a specific square
+   * @param {number} index - Square number (external notation 1-50)
+   * @returns {MoveObject[]} Array of legal moves from the square
+   */
+  const getLegalMoves = (index) => {
+    let legalMoves = []
+    const squareNum = parseInt(index, 10)
+    
+    if (!Number.isNaN(squareNum)) {
+      const internalIndex = convertNumber(squareNum, 'internal')
+      const captureState = { position, dirFrom: '' }
+      const captureObj = { jumps: [internalIndex], takes: [], piecesTaken: [] }
+      
+      let captures = capturesAtSquare(internalIndex, captureState, captureObj)
       captures = longestCapture(captures)
-      legalMoves = captures
-      if (captures.length === 0) {
-        legalMoves = movesAtSquare(index)
-      }
+      
+      // Captures are mandatory if available
+      legalMoves = captures.length > 0 ? captures : movesAtSquare(internalIndex)
     }
-    // TODO called on hover ??
+    
     return convertMoves(legalMoves, 'external')
   }
 
-  function getMoves (index) {
-    var moves = []
-    var us = turn
+  /**
+   * Gets all legal moves for the current player
+   * @param {number} [index] - Optional square index (unused parameter)
+   * @returns {MoveObject[]} Array of all legal moves for current player
+   */
+  const getMoves = (index) => {
+    const moves = []
+    const currentPlayer = turn
 
-    for (var i = 1; i < position.length; i++) {
-      if (position[i] === us || position[i] === us.toLowerCase()) {
-        var tempMoves = movesAtSquare(i)
-        if (tempMoves.length) {
-          moves = moves.concat(convertMoves(tempMoves, 'external'))
+    for (let i = 1; i < position.length; i++) {
+      const piece = position[i]
+      if (piece === currentPlayer || piece === currentPlayer.toLowerCase()) {
+        const squareMoves = movesAtSquare(i)
+        if (squareMoves.length) {
+          moves.push(...convertMoves(squareMoves, 'external'))
         }
       }
     }
+    
     return moves
   }
 
-  function setCharAt (position, idx, chr) {
-    idx = parseInt(idx, 10)
-    if (idx > position.length - 1) {
-      return position.toString()
-    } else {
-      return position.substr(0, idx) + chr + position.substr(idx + 1)
+  /**
+   * Sets character at specific index in position string
+   * @param {string} posStr - Position string to modify
+   * @param {number} idx - Index to modify
+   * @param {string|number} chr - Character to set
+   * @returns {string} Modified position string
+   */
+  const setCharAt = (posStr, idx, chr) => {
+    const index = parseInt(idx, 10)
+    if (index > posStr.length - 1) {
+      return posStr.toString()
     }
+    return `${posStr.substr(0, index)}${chr}${posStr.substr(index + 1)}`
   }
 
-  function movesAtSquare (square) {
-    var moves = []
-    var posFrom = square
-    var piece = position.charAt(posFrom)
-    // console.trace(piece, square, 'movesAtSquare')
+  /**
+   * Gets all possible moves from a specific square
+   * @param {number} square - Internal square index
+   * @returns {MoveObject[]} Array of possible moves from the square
+   */
+  const movesAtSquare = (square) => {
+    const moves = []
+    const piece = position.charAt(square)
+    
     switch (piece) {
       case 'b':
-      case 'w':
-        var dirStrings = directionStrings(position, posFrom, 2)
-        for (var dir in dirStrings) {
-          var str = dirStrings[dir]
-
-          var matchArray = str.match(/^[bw]0/) // e.g. b0 w0
-          if (matchArray !== null && validDir(piece, dir) === true) {
-            var posTo = posFrom + STEPS[dir]
-            var moveObject = {from: posFrom, to: posTo, takes: [], jumps: []}
-            moves.push(moveObject)
+      case 'w': {
+        // Regular pieces (men) can only move one square diagonally
+        const dirStrings = directionStrings(position, square, 2)
+        
+        for (const [dir, str] of Object.entries(dirStrings)) {
+          const matchArray = str.match(/^[bw]0/) // piece followed by empty square
+          if (matchArray && validDir(piece, dir)) {
+            const posTo = square + STEPS[dir]
+            moves.push({ from: square, to: posTo, takes: [], jumps: [] })
           }
         }
         break
+      }
+      
       case 'W':
-      case 'B':
-        dirStrings = directionStrings(position, posFrom, 2)
-        for (dir in dirStrings) {
-          str = dirStrings[dir]
-
-          matchArray = str.match(/^[BW]0+/) // e.g. B000, W0
-          if (matchArray !== null) {
-            for (var i = 1; i < matchArray[0].length; i++) {
-              posTo = posFrom + (i * STEPS[dir])
-              moveObject = {from: posFrom, to: posTo, takes: [], jumps: []}
-              moves.push(moveObject)
+      case 'B': {
+        // Kings can move multiple squares diagonally
+        const dirStrings = directionStrings(position, square, 2)
+        
+        for (const [dir, str] of Object.entries(dirStrings)) {
+          const matchArray = str.match(/^[BW]0+/) // king followed by empty squares
+          if (matchArray) {
+            // Can move to any empty square in this direction
+            for (let i = 1; i < matchArray[0].length; i++) {
+              const posTo = square + (i * STEPS[dir])
+              moves.push({ from: square, to: posTo, takes: [], jumps: [] })
             }
           }
         }
         break
+      }
+      
       default:
-        return moves
+        // Invalid piece or empty square
+        break
     }
+    
     return moves
   }
 
-  function getCaptures () {
-    var us = turn
-    var captures = []
-    for (var i = 0; i < position.length; i++) {
-      if (position[i] === us || position[i] === us.toLowerCase()) {
-        var posFrom = i
-        var state = {position: position, dirFrom: ''}
-        var capture = {jumps: [], takes: [], from: posFrom, to: '', piecesTaken: []}
-        capture.jumps[0] = posFrom
-        var tempCaptures = capturesAtSquare(posFrom, state, capture)
-        if (tempCaptures.length) {
-          captures = captures.concat(convertMoves(tempCaptures, 'external'))
+  /**
+   * Gets all possible captures for the current player
+   * @returns {MoveObject[]} Array of capture moves
+   */
+  const getCaptures = () => {
+    const currentPlayer = turn
+    let captures = []
+    
+    for (let i = 0; i < position.length; i++) {
+      const piece = position[i]
+      if (piece === currentPlayer || piece === currentPlayer.toLowerCase()) {
+        const state = { position, dirFrom: '' }
+        const captureObj = {
+          jumps: [i],
+          takes: [],
+          from: i,
+          to: '',
+          piecesTaken: []
+        }
+        
+        const squareCaptures = capturesAtSquare(i, state, captureObj)
+        if (squareCaptures.length) {
+          captures.push(...convertMoves(squareCaptures, 'external'))
         }
       }
     }
-    captures = longestCapture(captures)
-    return captures
+    
+    return longestCapture(captures)
   }
 
-  function capturesAtSquare (posFrom, state, capture) {
-    var piece = state.position.charAt(posFrom)
-    if (piece !== 'b' && piece !== 'w' && piece !== 'B' && piece !== 'W') {
+  /**
+   * Recursively finds all possible captures from a given square
+   * @param {number} posFrom - Starting position (internal notation)
+   * @param {CaptureState} state - Current board state
+   * @param {Object} capture - Current capture sequence
+   * @returns {MoveObject[]} Array of possible capture sequences
+   */
+  const capturesAtSquare = (posFrom, state, capture) => {
+    const piece = state.position.charAt(posFrom)
+    if (!['b', 'w', 'B', 'W'].includes(piece)) {
       return [capture]
     }
-    var dirString
-    if (piece === 'b' || piece === 'w') {
-      dirString = directionStrings(state.position, posFrom, 3)
-    } else {
-      dirString = directionStrings(state.position, posFrom)
-    }
-    var finished = true
-    var captureArrayForDir = {}
-    for (var dir in dirString) {
-      if (dir === state.dirFrom) {
-        continue
-      }
-      var str = dirString[dir]
+    
+    // Get direction strings based on piece type
+    const dirString = (piece === 'b' || piece === 'w') 
+      ? directionStrings(state.position, posFrom, 3)
+      : directionStrings(state.position, posFrom)
+    
+    let finished = true
+    const captureArrayForDir = {}
+    
+    for (const [dir, str] of Object.entries(dirString)) {
+      // Skip the direction we came from
+      if (dir === state.dirFrom) continue
+      
       switch (piece) {
         case 'b':
-        case 'w':
-          var matchArray = str.match(/^b[wW]0|^w[bB]0/) // matches: bw0, bW0, wB0, wb0
-          if (matchArray !== null) {
-            var posTo = posFrom + (2 * STEPS[dir])
-            var posTake = posFrom + (1 * STEPS[dir])
-            if (capture.takes.indexOf(posTake) > -1) {
-              continue // capturing twice forbidden
-            }
-            var updateCapture = clone(capture)
+        case 'w': {
+          // Regular pieces: look for enemy piece followed by empty square
+          const matchArray = str.match(/^b[wW]0|^w[bB]0/)
+          if (matchArray) {
+            const posTo = posFrom + (2 * STEPS[dir])
+            const posTake = posFrom + STEPS[dir]
+            
+            // Can't capture the same piece twice
+            if (capture.takes.includes(posTake)) continue
+            
+            const updateCapture = { ...clone(capture) }
             updateCapture.to = posTo
             updateCapture.jumps.push(posTo)
             updateCapture.takes.push(posTake)
             updateCapture.piecesTaken.push(position.charAt(posTake))
             updateCapture.from = posFrom
-            var updateState = clone(state)
+            
+            const updateState = { ...clone(state) }
             updateState.dirFrom = oppositeDir(dir)
-            var pieceCode = updateState.position.charAt(posFrom)
+            const pieceCode = updateState.position.charAt(posFrom)
             updateState.position = setCharAt(updateState.position, posFrom, 0)
             updateState.position = setCharAt(updateState.position, posTo, pieceCode)
+            
             finished = false
             captureArrayForDir[dir] = capturesAtSquare(posTo, updateState, updateCapture)
           }
           break
+        }
+        
         case 'B':
-        case 'W':
-          matchArray = str.match(/^B0*[wW]0+|^W0*[bB]0+/) // matches: B00w000, WB00
-          if (matchArray !== null) {
-            var matchStr = matchArray[0]
-            var matchArraySubstr = matchStr.match(/[wW]0+$|[bB]0+$/) // matches: w000, B00
-            var matchSubstr = matchArraySubstr[0]
-            var takeIndex = matchStr.length - matchSubstr.length
-            posTake = posFrom + (takeIndex * STEPS[dir])
-            if (capture.takes.indexOf(posTake) > -1) {
-              continue
-            }
-            for (var i = 1; i < matchSubstr.length; i++) {
-              posTo = posFrom + ((takeIndex + i) * STEPS[dir])
-              updateCapture = clone(capture)
+        case 'W': {
+          // Kings: look for enemy piece with empty squares after it
+          const matchArray = str.match(/^B0*[wW]0+|^W0*[bB]0+/)
+          if (matchArray) {
+            const matchStr = matchArray[0]
+            const matchArraySubstr = matchStr.match(/[wW]0+$|[bB]0+$/)
+            const matchSubstr = matchArraySubstr[0]
+            const takeIndex = matchStr.length - matchSubstr.length
+            const posTake = posFrom + (takeIndex * STEPS[dir])
+            
+            // Can't capture the same piece twice
+            if (capture.takes.includes(posTake)) continue
+            
+            // King can land on any empty square after the captured piece
+            for (let i = 1; i < matchSubstr.length; i++) {
+              const posTo = posFrom + ((takeIndex + i) * STEPS[dir])
+              const updateCapture = { ...clone(capture) }
               updateCapture.jumps.push(posTo)
               updateCapture.to = posTo
               updateCapture.takes.push(posTake)
               updateCapture.piecesTaken.push(position.charAt(posTake))
               updateCapture.posFrom = posFrom
-              updateState = clone(state)
+              
+              const updateState = { ...clone(state) }
               updateState.dirFrom = oppositeDir(dir)
-              pieceCode = updateState.position.charAt(posFrom)
+              const pieceCode = updateState.position.charAt(posFrom)
               updateState.position = setCharAt(updateState.position, posFrom, 0)
               updateState.position = setCharAt(updateState.position, posTo, pieceCode)
+              
               finished = false
-              var dirIndex = dir + i.toString()
+              const dirIndex = `${dir}${i}`
               captureArrayForDir[dirIndex] = capturesAtSquare(posTo, updateState, updateCapture)
             }
           }
           break
+        }
+        
         default:
-          captureArrayForDir = []
+          break
       }
     }
-    var captureArray = []
-    if (finished === true && capture.takes.length) {
-      // fix for mutiple capture
+    
+    // Collect all capture sequences
+    let captureArray = []
+    if (finished && capture.takes.length) {
+      // No more captures possible, finalize this sequence
       capture.from = capture.jumps[0]
-      captureArray[0] = capture
+      captureArray = [capture]
     } else {
-      for (dir in captureArrayForDir) {
-        captureArray = captureArray.concat(captureArrayForDir[dir])
+      // Continue with further captures
+      for (const sequences of Object.values(captureArrayForDir)) {
+        captureArray.push(...sequences)
       }
     }
+    
     return captureArray
   }
 
-  function push (move) {
+  /**
+   * Adds a move to the game history
+   * @param {MoveObject} move - Move to add to history
+   * @returns {void}
+   */
+  const push = (move) => {
     history.push({
-      move: move,
-      turn: turn,
-      moveNumber: moveNumber
+      move,
+      turn,
+      moveNumber
     })
   }
 
-  function undoMove () {
-    var old = history.pop()
-    if (!old) {
+  /**
+   * Undoes the last move made
+   * @returns {MoveObject|null} The undone move object, or null if no moves to undo
+   */
+  const undoMove = () => {
+    const lastEntry = history.pop()
+    if (!lastEntry) {
       return null
     }
 
-    var move = old.move
-    turn = old.turn
-    moveNumber = old.moveNumber
+    const { move, turn: oldTurn, moveNumber: oldMoveNumber } = lastEntry
+    turn = oldTurn
+    moveNumber = oldMoveNumber
 
+    // Restore piece to original position
     position = setCharAt(position, convertNumber(move.from, 'internal'), move.piece)
     position = setCharAt(position, convertNumber(move.to, 'internal'), 0)
+    
     if (move.flags === 'c') {
-      for (var i = 0; i < move.captures.length; i += 1) {
-        position = setCharAt(position, convertNumber(move.captures[i], 'internal'), move.piecesCaptured[i])
+      // Restore captured pieces
+      for (let i = 0; i < move.captures.length; i++) {
+        const capturePos = convertNumber(move.captures[i], 'internal')
+        position = setCharAt(position, capturePos, move.piecesCaptured[i])
       }
     } else if (move.flags === 'p') {
+      // Handle promotion undo
       if (move.captures) {
-        for (var i = 0; i < move.captures.length; i += 1) {
-          position = setCharAt(position, convertNumber(move.captures[i], 'internal'), move.piecesCaptured[i])
+        for (let i = 0; i < move.captures.length; i++) {
+          const capturePos = convertNumber(move.captures[i], 'internal')
+          position = setCharAt(position, capturePos, move.piecesCaptured[i])
         }
       }
+      // Demote the piece back to regular piece
       position = setCharAt(position, convertNumber(move.from, 'internal'), move.piece.toLowerCase())
     }
+    
     return move
   }
 
-  function get_disambiguator (move) {
-
+  /**
+   * Gets disambiguator for a move (placeholder function)
+   * @param {MoveObject} move - Move to get disambiguator for
+   * @returns {void} Currently not implemented
+   */
+  const get_disambiguator = (move) => {
+    // TODO: Implementation needed
   }
 
-  function swap_color (c) {
-    return c === WHITE ? BLACK : WHITE
-  }
+  /**
+   * Swaps the color from white to black or vice versa
+   * @param {string} c - Color to swap ('W' or 'B')
+   * @returns {string} Opposite color
+   */
+  const swap_color = (c) => c === WHITE ? BLACK : WHITE
 
-  function isInteger (int) {
-    var regex = /^\d+$/
-    if (regex.test(int)) {
-      return true
-    } else {
-      return false
-    }
-  }
+  /**
+   * Checks if a value is an integer
+   * @param {*} int - Value to check
+   * @returns {boolean} True if the value is an integer string
+   */
+  const isInteger = (int) => /^\d+$/.test(int)
 
-  function longestCapture (captures) {
-    var maxJumpCount = 0
-    for (var i = 0; i < captures.length; i++) {
-      var jumpCount = captures[i].jumps.length
-      if (jumpCount > maxJumpCount) {
-        maxJumpCount = jumpCount
-      }
-    }
-
-    var selectedCaptures = []
+  /**
+   * Filters captures to only include the longest sequences (mandatory capture rule)
+   * @param {MoveObject[]} captures - Array of capture moves
+   * @returns {MoveObject[]} Array of longest capture moves only
+   */
+  const longestCapture = (captures) => {
+    if (captures.length === 0) return []
+    
+    // Find the maximum number of jumps in any capture sequence
+    const maxJumpCount = Math.max(...captures.map(capture => capture.jumps.length))
+    
+    // Must be at least 2 jumps to be a capture (from -> to)
     if (maxJumpCount < 2) {
-      return selectedCaptures
+      return []
     }
 
-    for (i = 0; i < captures.length; i++) {
-      if (captures[i].jumps.length === maxJumpCount) {
-        selectedCaptures.push(captures[i])
-      }
-    }
-    return selectedCaptures
+    // Return only captures with the maximum number of jumps
+    return captures.filter(capture => capture.jumps.length === maxJumpCount)
   }
 
-  function convertMoves (moves, type) {
-    var tempMoves = []
+  /**
+   * Converts moves between internal and external notation
+   * @param {MoveObject[]} moves - Array of moves to convert
+   * @param {string} type - Target notation ('internal' or 'external')
+   * @returns {MoveObject[]} Array of converted moves
+   */
+  const convertMoves = (moves, type) => {
     if (!type || moves.length === 0) {
-      return tempMoves
+      return []
     }
-    for (var i = 0; i < moves.length; i++) {
-      var moveObject = {jumps: [], takes: []}
-      moveObject.from = convertNumber(moves[i].from, type)
-      for (var j = 0; j < moves[i].jumps.length; j++) {
-        moveObject.jumps[j] = convertNumber(moves[i].jumps[j], type)
-      }
-      for (j = 0; j < moves[i].takes.length; j++) {
-        moveObject.takes[j] = convertNumber(moves[i].takes[j], type)
-      }
-      moveObject.to = convertNumber(moves[i].to, type)
-      moveObject.piecesTaken = moves[i].piecesTaken
-      tempMoves.push(moveObject)
-    }
-    return tempMoves
+    
+    return moves.map(move => ({
+      jumps: move.jumps.map(jump => convertNumber(jump, type)),
+      takes: move.takes.map(take => convertNumber(take, type)),
+      from: convertNumber(move.from, type),
+      to: convertNumber(move.to, type),
+      piecesTaken: move.piecesTaken
+    }))
   }
 
-  function convertNumber (number, notation) {
-    var num = parseInt(number, 10)
-    var result
+  /**
+   * Converts between internal and external square numbering systems
+   * @param {number} number - Square number to convert
+   * @param {string} notation - Target notation ('internal' or 'external')
+   * @returns {number} Converted square number
+   */
+  const convertNumber = (number, notation) => {
+    const num = parseInt(number, 10)
+    
     switch (notation) {
       case 'internal':
-        result = num + Math.floor((num - 1) / 10)
-        break
+        return num + Math.floor((num - 1) / 10)
       case 'external':
-        result = num - Math.floor((num - 1) / 11)
-        break
+        return num - Math.floor((num - 1) / 11)
       default:
-        result = num
+        return num
     }
-    return result
   }
 
-  function convertPosition (position, notation) {
-    var sub1, sub2, sub3, sub4, sub5, newPosition
+  /**
+   * Converts position between internal and external representations
+   * @param {string} pos - Position string to convert
+   * @param {string} notation - Target notation ('internal' or 'external')
+   * @returns {string} Converted position string
+   */
+  const convertPosition = (pos, notation) => {
     switch (notation) {
-      case 'internal':
-        sub1 = position.substr(1, 10)
-        sub2 = position.substr(11, 10)
-        sub3 = position.substr(21, 10)
-        sub4 = position.substr(31, 10)
-        sub5 = position.substr(41, 10)
-        newPosition = '-' + sub1 + '-' + sub2 + '-' + sub3 + '-' + sub4 + '-' + sub5 + '-'
-        break
-      case 'external':
-        sub1 = position.substr(1, 10)
-        sub2 = position.substr(12, 10)
-        sub3 = position.substr(23, 10)
-        sub4 = position.substr(34, 10)
-        sub5 = position.substr(45, 10)
-        newPosition = '?' + sub1 + sub2 + sub3 + sub4 + sub5
-        break
+      case 'internal': {
+        const sub1 = pos.substr(1, 10)
+        const sub2 = pos.substr(11, 10)
+        const sub3 = pos.substr(21, 10)
+        const sub4 = pos.substr(31, 10)
+        const sub5 = pos.substr(41, 10)
+        return `-${sub1}-${sub2}-${sub3}-${sub4}-${sub5}-`
+      }
+      
+      case 'external': {
+        const sub1 = pos.substr(1, 10)
+        const sub2 = pos.substr(12, 10)
+        const sub3 = pos.substr(23, 10)
+        const sub4 = pos.substr(34, 10)
+        const sub5 = pos.substr(45, 10)
+        return `?${sub1}${sub2}${sub3}${sub4}${sub5}`
+      }
+      
       default:
-        newPosition = position
-    }
-    return newPosition
-  }
-
-  function outsideBoard (square) {
-    // internal notation only
-    var n = parseInt(square, 10)
-    if (n >= 0 && n <= 55 && (n % 11) !== 0) {
-      return false
-    } else {
-      return true
+        return pos
     }
   }
 
-  function directionStrings (tempPosition, square, maxLength) {
-    // Create direction strings for square at position (internal representation)
-    // Output object with four directions as properties (four rhumbs).
-    // Each property has a string as value representing the pieces in that direction.
-    // Piece of the given square is part of each string.
-    // Example of output: {NE: 'b0', SE: 'b00wb00', SW: 'bbb00', NW: 'bb'}
-    // Strings have maximum length of given maxLength.
-    if (arguments.length === 2) {
-      maxLength = 100
-    }
-    var dirStrings = {}
-    if (outsideBoard(square) === true) {
-      return 334
+  /**
+   * Checks if a square is outside the board (internal notation only)
+   * @param {number} square - Square number to check
+   * @returns {boolean} True if square is outside the board
+   */
+  const outsideBoard = (square) => {
+    const n = parseInt(square, 10)
+    return !(n >= 0 && n <= 55 && (n % 11) !== 0)
+  }
+
+  /**
+   * Creates direction strings for a square showing pieces in each direction
+   * @param {string} tempPosition - Position string to analyze
+   * @param {number} square - Square to get directions from (internal notation)
+   * @param {number} [maxLength=100] - Maximum length of direction strings
+   * @returns {DirectionStrings|number} Object with direction strings or error code
+   */
+  const directionStrings = (tempPosition, square, maxLength = 100) => {
+    if (outsideBoard(square)) {
+      return 334 // Error code for outside board
     }
 
-    for (var dir in STEPS) {
-      var dirArray = []
-      var i = 0
-      var index = square
+    const dirStrings = {}
+    
+    for (const [dir, step] of Object.entries(STEPS)) {
+      const dirArray = []
+      let i = 0
+      let index = square
+      
       do {
         dirArray[i] = tempPosition.charAt(index)
         i++
-        index = square + i * STEPS[dir]
-        var outside = outsideBoard(index)
-      } while (outside === false && i < maxLength)
+        index = square + (i * step)
+      } while (!outsideBoard(index) && i < maxLength)
 
       dirStrings[dir] = dirArray.join('')
     }
@@ -1035,111 +1232,170 @@ var Draughts = function (fen) {
     return dirStrings
   }
 
-  function oppositeDir (direction) {
-    var opposite = {NE: 'SW', SE: 'NW', SW: 'NE', NW: 'SE'}
-    return opposite[direction]
+  /**
+   * Gets the opposite direction
+   * @param {string} direction - Direction ('NE', 'SE', 'SW', 'NW')
+   * @returns {string} Opposite direction
+   */
+  const oppositeDir = (direction) => {
+    const opposites = { NE: 'SW', SE: 'NW', SW: 'NE', NW: 'SE' }
+    return opposites[direction]
   }
 
-  function validDir (piece, dir) {
-    var validDirs = {}
-    validDirs.w = {NE: true, SE: false, SW: false, NW: true}
-    validDirs.b = {NE: false, SE: true, SW: true, NW: false}
-    return validDirs[piece][dir]
+  /**
+   * Checks if a direction is valid for a piece type
+   * @param {string} piece - Piece type ('w' for white, 'b' for black)
+   * @param {string} dir - Direction to check ('NE', 'SE', 'SW', 'NW')
+   * @returns {boolean} True if direction is valid for the piece
+   */
+  const validDir = (piece, dir) => {
+    const validDirs = {
+      w: { NE: true, SE: false, SW: false, NW: true },
+      b: { NE: false, SE: true, SW: true, NW: false }
+    }
+    return validDirs[piece]?.[dir] ?? false
   }
 
-  function ascii (unicode) {
-    var extPosition = convertPosition(position, 'external')
-    var s = '\n+-------------------------------+\n'
-    var i = 1
-    for (var row = 1; row <= 10; row++) {
-      s += '|\t'
+  /**
+   * Generates ASCII representation of the current board position
+   * @param {boolean} [unicode=false] - Whether to use Unicode symbols for pieces
+   * @returns {string} ASCII board representation
+   */
+  const ascii = (unicode = false) => {
+    const extPosition = convertPosition(position, 'external')
+    let board = '\n+-------------------------------+\n'
+    let squareIndex = 1
+    
+    for (let row = 1; row <= 10; row++) {
+      board += '|\t'
+      
+      // Add leading spaces for odd rows
       if (row % 2 !== 0) {
-        s += '  '
+        board += '  '
       }
-      for (var col = 1; col <= 10; col++) {
+      
+      for (let col = 1; col <= 10; col++) {
         if (col % 2 === 0) {
-          s += '  '
-          i++
+          board += '  '
+          squareIndex++
         } else {
-          if (unicode) {
-            s += ' ' + UNICODES[extPosition[i]]
-          } else {
-            s += ' ' + extPosition[i]
-          }
+          const piece = extPosition[squareIndex]
+          board += unicode ? ` ${UNICODES[piece]}` : ` ${piece}`
         }
       }
+      
+      // Add trailing spaces for even rows
       if (row % 2 === 0) {
-        s += '  '
+        board += '  '
       }
-      s += '\t|\n'
+      
+      board += '\t|\n'
     }
-    s += '+-------------------------------+\n'
-    return s
+    
+    return `${board}+-------------------------------+\n`
   }
 
-  function gameOver () {
-    // First check if any piece left
-    for (var i = 0; i < position.length; i++) {
+  /**
+   * Checks if the game is over (no moves available or no pieces left)
+   * @returns {boolean} True if game is over
+   */
+  const gameOver = () => {
+    // Check if current player has any pieces left
+    let hasPlayerPieces = false
+    for (let i = 0; i < position.length; i++) {
       if (position[i].toLowerCase() === turn.toLowerCase()) {
-        // if moves left game not over
-        return generate_moves().length === 0
+        hasPlayerPieces = true
+        break
       }
     }
-    return true
+    
+    if (!hasPlayerPieces) {
+      return true
+    }
+    
+    // Check if current player has any legal moves
+    return generate_moves().length === 0
   }
 
-  function getHistory (options) {
-    var tempHistory = clone(history)
-    var moveHistory = []
-    var verbose = (typeof options !== 'undefined' && 'verbose' in options && options.verbose)
+  /**
+   * Gets the move history in various formats
+   * @param {Object} [options] - Options for history format
+   * @param {boolean} [options.verbose=false] - Whether to return detailed move objects
+   * @returns {(string[]|Object[])} Array of moves in requested format
+   */
+  const getHistory = (options = {}) => {
+    const tempHistory = clone(history)
+    const moveHistory = []
+    const { verbose = false } = options
+    
     while (tempHistory.length > 0) {
-      var move = tempHistory.shift()
+      const historyEntry = tempHistory.shift()
       if (verbose) {
-        moveHistory.push(makePretty(move))
+        moveHistory.push(makePretty(historyEntry))
       } else {
-        moveHistory.push(move.move.from + SIGNS[move.move.flags] + move.move.to)
+        const { move } = historyEntry
+        moveHistory.push(`${move.from}${SIGNS[move.flags]}${move.to}`)
       }
     }
 
     return moveHistory
   }
 
-  function getPosition () {
-    return convertPosition(position, 'external')
-  }
+  /**
+   * Gets the current board position in external notation
+   * @returns {string} Position string in external notation
+   */
+  const getPosition = () => convertPosition(position, 'external')
 
-  function makePretty (uglyMove) {
-    var move = {}
-    move.from = uglyMove.move.from
-    move.to = uglyMove.move.to
-    move.flags = uglyMove.move.flags
-    move.moveNumber = uglyMove.moveNumber
-    move.piece = uglyMove.move.piece
-    if (move.flags === 'c') {
-      move.captures = uglyMove.move.captures.join(',')
+  /**
+   * Formats a history entry into a prettier move object
+   * @param {HistoryEntry} uglyMove - Raw history entry
+   * @returns {Object} Formatted move object
+   */
+  const makePretty = (uglyMove) => {
+    const { move, moveNumber } = uglyMove
+    const prettyMove = {
+      from: move.from,
+      to: move.to,
+      flags: move.flags,
+      moveNumber,
+      piece: move.piece
     }
-    return move
+    
+    if (move.flags === 'c' && move.captures) {
+      prettyMove.captures = move.captures.join(',')
+    }
+    
+    return prettyMove
   }
 
-  function clone (obj) {
-    var dupe = JSON.parse(JSON.stringify(obj))
-    return dupe
-  }
+  /**
+   * Creates a deep clone of an object
+   * @param {*} obj - Object to clone
+   * @returns {*} Deep clone of the object
+   */
+  const clone = (obj) => JSON.parse(JSON.stringify(obj))
 
-  function trim (str) {
-    return str.replace(/^\s+|\s+$/g, '')
-  }
+  /**
+   * Trims whitespace from both ends of a string
+   * @param {string} str - String to trim
+   * @returns {string} Trimmed string
+   */
+  const trim = (str) => str.replace(/^\s+|\s+$/g, '')
 
-  // TODO
-  function perft (depth) {
-    var moves = generate_moves({legal: false})
-    var nodes = 0
+  /**
+   * Performance test function - counts nodes at given depth
+   * @param {number} depth - Search depth
+   * @returns {number} Number of nodes at the given depth
+   */
+  const perft = (depth) => {
+    const moves = generate_moves({ legal: false })
+    let nodes = 0
 
-    for (var i = 0; i < moves.length; i++) {
-      makeMove(moves[i])
+    for (const move of moves) {
+      makeMove(move)
       if (depth - 1 > 0) {
-        var child_nodes = perft(depth - 1)
-        nodes += child_nodes
+        nodes += perft(depth - 1)
       } else {
         nodes++
       }
@@ -1149,127 +1405,113 @@ var Draughts = function (fen) {
     return nodes
   }
 
-  return {
-    WHITE: WHITE,
-    BLACK: BLACK,
-    MAN: MAN,
-    KING: KING,
-    FLAGS: FLAGS,
+  // Assign methods to this instance
+  Object.assign(this, {
+    // Constants
+    WHITE,
+    BLACK,
+    MAN,
+    KING,
+    FLAGS,
     SQUARES: 'A8',
 
-    load: function (fen) {
-      return load(fen)
-    },
+    // Game setup methods
+    load: (fen) => load(fen),
+    reset: () => reset(),
+    clear: () => clear(),
 
-    reset: function () {
-      return reset()
-    },
-
+    // Move generation and validation
     moves: generate_moves,
+    getMoves,
+    getLegalMoves,
+    captures: getCaptures,
 
-    gameOver: gameOver,
+    // Game state methods
+    gameOver,
+    inDraw: () => false,
+    turn: () => turn.toLowerCase(),
 
-    inDraw: function () {
-      return false
-    },
-
-    validate_fen: validate_fen,
-
-    fen: generate_fen,
-
-    pdn: generatePDN,
-
-    load_pdn: function (pdn, options) {},
-
-    parsePDN: parsePDN,
-
-    header: function () {
-      return set_header(arguments)
-    },
-
-    ascii: ascii,
-
-    turn: function () {
-      return turn.toLowerCase()
-    },
-
-    move: function move (move) {
-      if (typeof move.to === 'undefined' && typeof move.from === 'undefined') {
+    // Move execution
+    move: (moveObj) => {
+      if (typeof moveObj.to === 'undefined' && typeof moveObj.from === 'undefined') {
         return false
       }
-      move.to = parseInt(move.to, 10)
-      move.from = parseInt(move.from, 10)
-      var moves = generate_moves()
-      for (var i = 0; i < moves.length; i++) {
-        if ((move.to === moves[i].to) && (move.from === moves[i].from)) {
-          makeMove(moves[i])
-          return moves[i]
-        }
+      
+      const move = {
+        to: parseInt(moveObj.to, 10),
+        from: parseInt(moveObj.from, 10)
       }
+      
+      const legalMoves = generate_moves()
+      const matchingMove = legalMoves.find(legalMove => 
+        move.to === legalMove.to && move.from === legalMove.from
+      )
+      
+      if (matchingMove) {
+        makeMove(matchingMove)
+        return matchingMove
+      }
+      
       return false
     },
+    
+    undo: () => undoMove() || null,
 
-    getMoves: getMoves,
-
-    getLegalMoves: getLegalMoves,
-
-    undo: function () {
-      var move = undoMove()
-      return move || null
-    },
-
-    clear: function () {
-      return clear()
-    },
-
-    put: function (piece, square) {
-      return put(piece, square)
-    },
-
-    get: function (square) {
-      return get(square)
-    },
-
-    remove: function (square) {
-      return remove(square)
-    },
-
-    perft: function (depth) {
-      return perft(depth)
-    },
-
-    history: getHistory,
-
-    convertMoves: convertMoves,
-
-    convertNumber: convertNumber,
-
-    convertPosition: convertPosition,
-
-    outsideBoard: outsideBoard,
-
-    directionStrings: directionStrings,
-
-    oppositeDir: oppositeDir,
-
-    validDir: validDir,
-
+    // Board manipulation
+    put: (piece, square) => put(piece, square),
+    get: (square) => get(square),
+    remove: (square) => remove(square),
     position: getPosition,
 
-    clone: clone,
+    // FEN and PDN support
+    validate_fen,
+    fen: generate_fen,
+    pdn: generatePDN,
+    load_pdn: (pdn, options) => {}, // TODO: Implementation needed
+    parsePDN,
+    header: (...args) => set_header(args),
 
-    makePretty: makePretty,
+    // History and display
+    history: getHistory,
+    ascii,
 
-    captures: getCaptures
+    // Utility functions
+    convertMoves,
+    convertNumber,
+    convertPosition,
+    outsideBoard,
+    directionStrings,
+    oppositeDir,
+    validDir,
+    clone,
+    makePretty,
+    
+    // Performance testing
+    perft: (depth) => perft(depth)
+  })
+
+  // Initialize game position after all functions are defined
+  if (!fen) {
+    position = DEFAULT_POSITION_INTERNAL
+    load(DEFAULT_FEN)
+  } else {
+    position = DEFAULT_POSITION_INTERNAL
+    load(fen)
   }
 }
 
+// Module exports for different environments
 if (typeof exports !== 'undefined') {
+  // CommonJS
   exports.Draughts = Draughts
+  module.exports = Draughts
+  module.exports.Draughts = Draughts
 }
 
 if (typeof define !== 'undefined') {
-  define(function () {
-    return Draughts
-  })
+  // AMD
+  define(() => Draughts)
 }
+
+// For ES6 modules, uncomment the following line when using .mjs extension:
+// export default Draughts
