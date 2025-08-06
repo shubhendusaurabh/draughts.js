@@ -1,6 +1,6 @@
 {
   "name": "draughts",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A javascript draughts library for move generation/validation, piece placement/movement and draw detection",
   "main": "draughts.js",
   "devDependencies": {
@@ -9,7 +9,7 @@
     "uglify-js": "*"
   },
   "scripts": {
-    "test":   "./node_modules/.bin/mocha ./tests.js",
+    "test": "./node_modules/.bin/mocha ./tests.js",
     "minify": "./node_modules/.bin/uglifyjs draughts.js -c -m --comments 'license' > draughts.min.js"
   },
   "repository": {
