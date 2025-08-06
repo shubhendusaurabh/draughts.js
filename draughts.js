@@ -207,7 +207,7 @@ function Draughts(fen) {
 
     const tokens = fen.split(':')
     // Set which side to move
-    turn = tokens[0].substr(0, 1)
+    turn = tokens[0].slice(0, 1)
 
     let externalPosition = DEFAULT_POSITION_EXTERNAL
     for (let i = 1; i <= externalPosition.length; i++) {
@@ -217,15 +217,15 @@ function Draughts(fen) {
 
     // Process both sides (white and black)
     for (let k = 1; k <= 2; k++) {
-      const color = tokens[k].substr(0, 1)
-      const sideString = tokens[k].substr(1)
+      const color = tokens[k].slice(0, 1)
+      const sideString = tokens[k].slice(1)
       if (sideString.length === 0) continue
       
       const numbers = sideString.split(',')
       for (let i = 0; i < numbers.length; i++) {
         let numSquare = numbers[i]
-        const isKing = numSquare.substr(0, 1) === 'K'
-        numSquare = isKing ? numSquare.substr(1) : numSquare // strip K
+        const isKing = numSquare.slice(0, 1) === 'K'
+        numSquare = isKing ? numSquare.slice(1) : numSquare // strip K
         
         const range = numSquare.split('-')
         if (range.length === 2) {
@@ -284,7 +284,7 @@ function Draughts(fen) {
       return { valid: false, error: errors[7], fen }
     }
 
-    if (fen.substr(1, 1) !== ':') {
+    if (fen.slice(1, 2) !== ':') {
       return { valid: false, error: errors[1], fen }
     }
 
@@ -301,21 +301,21 @@ function Draughts(fen) {
     }
 
     // Check colors of both sides
-    const colors = parts[1].substr(0, 1) + parts[2].substr(0, 1)
+    const colors = parts[1].slice(0, 1) + parts[2].slice(0, 1)
     if (!['BW', 'WB'].includes(colors)) {
       return { valid: false, error: errors[4], fen }
     }
 
     // Validate pieces for both sides
     for (let k = 1; k <= 2; k++) {
-      const sideString = parts[k].substr(1) // Strip color
+      const sideString = parts[k].slice(1) // Strip color
       if (sideString.length === 0) continue
       
       const numbers = sideString.split(',')
       for (const numberStr of numbers) {
         let numSquare = numberStr
-        const isKing = numSquare.substr(0, 1) === 'K'
-        numSquare = isKing ? numSquare.substr(1) : numSquare
+        const isKing = numSquare.slice(0, 1) === 'K'
+        numSquare = isKing ? numSquare.slice(1) : numSquare
         
         const range = numSquare.split('-')
         if (range.length === 2) {
@@ -827,7 +827,7 @@ function Draughts(fen) {
     if (index > posStr.length - 1) {
       return posStr.toString()
     }
-    return `${posStr.substr(0, index)}${chr}${posStr.substr(index + 1)}`
+    return `${posStr.slice(0, index)}${chr}${posStr.slice(index + 1)}`
   }
 
   /**
@@ -1169,20 +1169,20 @@ function Draughts(fen) {
   const convertPosition = (pos, notation) => {
     switch (notation) {
       case 'internal': {
-        const sub1 = pos.substr(1, 10)
-        const sub2 = pos.substr(11, 10)
-        const sub3 = pos.substr(21, 10)
-        const sub4 = pos.substr(31, 10)
-        const sub5 = pos.substr(41, 10)
+        const sub1 = pos.slice(1, 11)
+        const sub2 = pos.slice(11, 21)
+        const sub3 = pos.slice(21, 31)
+        const sub4 = pos.slice(31, 41)
+        const sub5 = pos.slice(41, 51)
         return `-${sub1}-${sub2}-${sub3}-${sub4}-${sub5}-`
       }
       
       case 'external': {
-        const sub1 = pos.substr(1, 10)
-        const sub2 = pos.substr(12, 10)
-        const sub3 = pos.substr(23, 10)
-        const sub4 = pos.substr(34, 10)
-        const sub5 = pos.substr(45, 10)
+        const sub1 = pos.slice(1, 11)
+        const sub2 = pos.slice(12, 22)
+        const sub3 = pos.slice(23, 33)
+        const sub4 = pos.slice(34, 44)
+        const sub5 = pos.slice(45, 55)
         return `?${sub1}${sub2}${sub3}${sub4}${sub5}`
       }
       

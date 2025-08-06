@@ -48,3 +48,11 @@ npm run minify
 - Uses Mocha + Chai for testing
 - Tests in tests.js cover perft calculations and move generation
 - Currently has placeholder test structures for perft and single-square move generation
+
+## Recent Changes
+
+### Code Modernization
+- **ES6 Conversion**: Converted entire codebase from ES5 to ES6+ with JSDoc type annotations
+- **Constructor Pattern**: Uses function constructor for `new` keyword compatibility
+- **String Methods**: Replaced deprecated `substr()` with modern `slice()` method (v0.2.0+)
+- **Breaking Changes**: Move format changed from strings ('35-30') to objects ({from: 35, to: 30})
