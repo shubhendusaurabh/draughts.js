@@ -4,13 +4,18 @@
   "description": "A javascript draughts library for move generation/validation, piece placement/movement and draw detection",
   "main": "draughts.js",
   "devDependencies": {
-    "mocha": "*",
     "chai": "*",
+    "eslint": "^9.32.0",
+    "mocha": "*",
     "uglify-js": "*"
   },
   "scripts": {
     "test": "./node_modules/.bin/mocha ./tests.js",
-    "minify": "./node_modules/.bin/uglifyjs draughts.js -c -m --comments 'license' > draughts.min.js"
+    "minify": "./node_modules/.bin/uglifyjs draughts.js -c -m --comments 'license' > draughts.min.js",
+    "lint": "eslint draughts.js tests.js",
+    "lint:fix": "eslint draughts.js tests.js --fix",
+    "lint:check": "eslint draughts.js tests.js --max-warnings 0",
+    "pretest": "npm run lint:check"
   },
   "repository": {
     "type": "git",

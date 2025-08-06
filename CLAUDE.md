@@ -14,6 +14,18 @@ npm test
 # Runs Mocha tests in tests.js
 ```
 
+### Linting
+```bash
+npm run lint
+# Run ESLint on source files
+
+npm run lint:fix
+# Auto-fix ESLint issues where possible
+
+npm run lint:check
+# Strict linting with zero warnings allowed
+```
+
 ### Build/Minification
 ```bash
 npm run minify
@@ -55,4 +67,10 @@ npm run minify
 - **ES6 Conversion**: Converted entire codebase from ES5 to ES6+ with JSDoc type annotations
 - **Constructor Pattern**: Uses function constructor for `new` keyword compatibility
 - **String Methods**: Replaced deprecated `substr()` with modern `slice()` method (v0.2.0+)
+- **Linting**: Replaced JSHint with ESLint 9+ using flat config format (v0.2.1+)
 - **Breaking Changes**: Move format changed from strings ('35-30') to objects ({from: 35, to: 30})
+
+### Development Tools
+- **ESLint**: Modern linting with ES2020 support, comprehensive rules for code quality
+- **Automatic Linting**: Pre-test hooks ensure code quality before tests run
+- **Auto-fixing**: Many style issues can be automatically fixed with `npm run lint:fix`

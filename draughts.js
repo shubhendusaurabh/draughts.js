@@ -117,7 +117,7 @@
  * @param {string} [fen] - FEN string to initialize the game position
  * @constructor
  */
-function Draughts(fen) {
+function Draughts (fen) {
   // Game constants
   const BLACK = 'B'
   const WHITE = 'W'
@@ -481,6 +481,7 @@ function Draughts(fen) {
       delete header.SetUp
       delete header.FEN
     }
+    return true
   }
 
   /**
@@ -510,7 +511,7 @@ function Draughts(fen) {
      * @param {Object} opts - Options object
      * @returns {Object<string, string>} Parsed header object
      */
-    const parsePDNHeader = (headerStr, opts) => {
+    const parsePDNHeader = (headerStr, _opts) => {
       const headerObj = {}
       const headers = headerStr.split(new RegExp(mask(newline_char)))
       
@@ -719,7 +720,7 @@ function Draughts(fen) {
    * @param {boolean} promotion - Whether this is a promotion
    * @returns {MoveObject} Constructed move object
    */
-  const build_move = (board, from, to, flags, promotion) => {
+  const _build_move = (board, from, to, flags, promotion) => {
     const move = {
       color: turn,
       from,
@@ -798,7 +799,7 @@ function Draughts(fen) {
    * @param {number} [index] - Optional square index (unused parameter)
    * @returns {MoveObject[]} Array of all legal moves for current player
    */
-  const getMoves = (index) => {
+  const getMoves = (_index) => {
     const moves = []
     const currentPlayer = turn
 
@@ -887,7 +888,7 @@ function Draughts(fen) {
    */
   const getCaptures = () => {
     const currentPlayer = turn
-    let captures = []
+    const captures = []
     
     for (let i = 0; i < position.length; i++) {
       const piece = position[i]
@@ -1083,7 +1084,7 @@ function Draughts(fen) {
    * @param {MoveObject} move - Move to get disambiguator for
    * @returns {void} Currently not implemented
    */
-  const get_disambiguator = (move) => {
+  const _get_disambiguator = (_move) => {
     // TODO: Implementation needed
   }
 
@@ -1467,7 +1468,7 @@ function Draughts(fen) {
     validate_fen,
     fen: generate_fen,
     pdn: generatePDN,
-    load_pdn: (pdn, options) => {}, // TODO: Implementation needed
+    load_pdn: (_pdn, _options) => {}, // TODO: Implementation needed
     parsePDN,
     header: (...args) => set_header(args),
 
