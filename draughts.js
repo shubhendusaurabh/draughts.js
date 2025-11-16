@@ -1297,6 +1297,43 @@ function Draughts (fen) {
   }
 
   /**
+   * Checks for insufficient material to continue the game
+   * Returns true if only kings remain and there are 2 or fewer total pieces
+   * @returns {boolean} True if insufficient material for meaningful play
+   */
+  const insufficientMaterial = () => {
+    let blackPieces = 0
+    let whitePieces = 0
+    let blackKings = 0
+    let whiteKings = 0
+
+    for (let i = 0; i < position.length; i++) {
+      const piece = position[i]
+      if (piece === 'b') {
+        blackPieces++
+      } else if (piece === 'B') {
+        blackPieces++
+        blackKings++
+      } else if (piece === 'w') {
+        whitePieces++
+      } else if (piece === 'W') {
+        whitePieces++
+        whiteKings++
+      }
+    }
+
+    const totalPieces = blackPieces + whitePieces
+    const totalKings = blackKings + whiteKings
+
+    // Draw if only kings remain and 2 or fewer pieces total
+    if (totalKings === totalPieces && totalPieces <= 2) {
+      return true
+    }
+
+    return false
+  }
+
+  /**
    * Checks if the game is over (no moves available or no pieces left)
    * @returns {boolean} True if game is over
    */
@@ -1309,11 +1346,11 @@ function Draughts (fen) {
         break
       }
     }
-    
+
     if (!hasPlayerPieces) {
       return true
     }
-    
+
     // Check if current player has any legal moves
     return generate_moves().length === 0
   }
@@ -1429,7 +1466,7 @@ function Draughts (fen) {
 
     // Game state methods
     gameOver,
-    inDraw: () => false,
+    inDraw: () => insufficientMaterial(),
     turn: () => turn.toLowerCase(),
 
     // Move execution

@@ -92,7 +92,7 @@ console.log(game.turn()); // 'w' (white to move)
 
 **`.inDraw()`**
 
-Returns `true` if the game is drawn. *(Currently always returns false - TODO)*
+Returns `true` if the game is drawn due to insufficient material (only kings remaining with 2 or fewer pieces total).
 
 ```js
 console.log(game.inDraw()); // false
