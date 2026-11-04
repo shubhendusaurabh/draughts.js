@@ -283,7 +283,8 @@ describe("Perft", () => {
     { fen: 'W:W31-50:B1-20', depth: 2, nodes: 81 },
     { fen: 'W:W31-50:B1-20', depth: 3, nodes: 658 },
     { fen: 'W:W31-50:B1-20', depth: 4, nodes: 4265 },
-    { fen: 'W:W31-50:B1-20', depth: 5, nodes: 27117 }
+    { fen: 'W:W31-50:B1-20', depth: 5, nodes: 27117 },
+    { fen: 'W:W31-50:B1-20', depth: 6, nodes: 167140 }
   ];
 
   perfts.forEach(perft => {
@@ -298,34 +299,88 @@ describe("Perft", () => {
 });
 
 /**
- * Test suite for single square move generation
- * Currently contains no test cases but framework is ready
+ * Test suite for move generation, including captures.
+ * Expected values are [from, to, takes] and were verified by hand against
+ * the 10x10 board geometry.
  */
 describe("Single Square Move Generation", () => {
+  const summarize = moves => moves.map(m => [m.from, m.to, m.takes]);
+  const sortMoves = moves => [...moves].sort((a, b) => a[1] - b[1]);
+
   const positions = [
-    // Add position test cases here when available
-    // { fen: 'position', square: 35, moves: [...], verbose: false }
+    {
+      name: 'a capture is mandatory over a normal move',
+      fen: 'W:W32,33:B27',
+      moves: [[32, 21, [27]]]
+    },
+    {
+      name: 'a man continues a multi-jump',
+      fen: 'W:W32:B27,17',
+      moves: [[32, 12, [27, 17]]]
+    },
+    {
+      name: 'a jump is not allowed over a piece on the board edge',
+      fen: 'W:W32:B27,16',
+      moves: [[32, 21, [27]]]
+    },
+    {
+      name: 'the majority capture rule picks the longest sequence',
+      fen: 'W:W32:B27,17,28',
+      moves: [[32, 12, [27, 17]]]
+    },
+    {
+      name: 'men can capture backwards',
+      fen: 'W:W28:B22,33',
+      moves: [[28, 17, [22]], [28, 39, [33]]]
+    },
+    {
+      name: 'black captures too',
+      fen: 'B:W27:B32',
+      moves: [[32, 21, [27]]]
+    },
+    {
+      name: 'a man cannot jump to a square off the board',
+      fen: 'W:W40:B35',
+      moves: [[40, 34, []]]
+    },
+    {
+      name: 'a flying king moves along a whole diagonal',
+      fen: 'W:WK50:BK45',
+      moves: [
+        [50, 6, []], [50, 11, []], [50, 17, []], [50, 22, []],
+        [50, 28, []], [50, 33, []], [50, 39, []], [50, 44, []]
+      ]
+    },
+    {
+      name: 'a flying king can land on any empty square beyond a capture',
+      fen: 'W:WK46:B37',
+      moves: [
+        [46, 5, [37]], [46, 10, [37]], [46, 14, [37]], [46, 19, [37]],
+        [46, 23, [37]], [46, 28, [37]], [46, 32, [37]]
+      ]
+    },
+    {
+      name: 'a king double capture is reported once per destination',
+      fen: 'W:WK46:B37,19',
+      moves: [[46, 5, [37, 19]], [46, 10, [37, 19]], [46, 14, [37, 19]]]
+    }
   ];
 
   positions.forEach(position => {
-    const draughts = new Draughts();
-    draughts.load(position.fen);
-
-    it(`${position.fen} square ${position.square}`, () => {
-      const moves = draughts.moves({ square: position.square, verbose: position.verbose });
-      let passed = position.moves.length === moves.length;
-
-      for (let j = 0; j < moves.length; j++) {
-        if (!position.verbose) {
-          passed = passed && moves[j] === position.moves[j];
-        } else {
-          for (const key in moves[j]) {
-            passed = passed && moves[j][key] === position.moves[j][key];
-          }
-        }
-      }
-      assert.isTrue(passed);
+    it(`${position.name} (${position.fen})`, () => {
+      const draughts = new Draughts(position.fen);
+      assert.deepEqual(
+        sortMoves(summarize(draughts.moves())),
+        sortMoves(position.moves)
+      );
     });
+  });
+
+  it('should restrict moves to a single square', () => {
+    const draughts = new Draughts('W:W32,48:B27,43');
+    assert.deepEqual(summarize(draughts.moves(48)), [[48, 39, [43]]]);
+    assert.deepEqual(summarize(draughts.moves(32)), [[32, 21, [27]]]);
+    assert.strictEqual(draughts.moves().length, 2);
   });
 });
 

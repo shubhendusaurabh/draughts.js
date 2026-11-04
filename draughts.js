@@ -859,7 +859,7 @@ function Draughts (fen) {
       case 'W':
       case 'B': {
         // Kings can move multiple squares diagonally
-        const dirStrings = directionStrings(position, square, 2)
+        const dirStrings = directionStrings(position, square)
         
         for (const [dir, str] of Object.entries(dirStrings)) {
           const matchArray = str.match(/^[BW]0+/) // king followed by empty squares
@@ -1163,8 +1163,17 @@ function Draughts (fen) {
       return []
     }
 
-    // Return only captures with the maximum number of jumps
-    return captures.filter(capture => capture.jumps.length === maxJumpCount)
+    // Keep only the longest captures. A king can reach the same destination
+    // through different intermediate landing squares; report each distinct
+    // (from, to, takes) sequence once.
+    const seen = new Set()
+    return captures.filter(capture => {
+      if (capture.jumps.length !== maxJumpCount) return false
+      const key = `${capture.jumps[0]}>${capture.jumps[capture.jumps.length - 1]}:${capture.takes.join(',')}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   }
 
   /**
