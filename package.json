@@ -15,7 +15,8 @@
     "lint": "eslint draughts.js tests.js",
     "lint:fix": "eslint draughts.js tests.js --fix",
     "lint:check": "eslint draughts.js tests.js --max-warnings 0",
-    "pretest": "npm run lint:check"
+    "pretest": "npm run lint:check",
+    "prepublishOnly": "npm run minify"
   },
   "repository": {
     "type": "git",
