@@ -129,6 +129,8 @@ function Draughts (fen) {
   const DEFAULT_POSITION_EXTERNAL = 'Wbbbbbbbbbbbbbbbbbbbb0000000000wwwwwwwwwwwwwwwwwwww'
   const STEPS = { NE: -5, SE: 6, SW: 5, NW: -6 }
   const POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*', '1-0', '0-1']
+  // 25 moves per side = 50 plies of king-only, non-capturing play
+  const KING_MOVE_LIMIT = 50
   const FLAGS = {
     NORMAL: 'n',
     CAPTURE: 'c',
@@ -1108,10 +1110,28 @@ function Draughts (fen) {
   }
 
   /**
+   * Checks the 25-move rule: the game is drawn when the last 25 moves by each
+   * side (50 plies) were all king moves, with no captures and no man moves.
+   * Only moves recorded in the history are counted.
+   * @returns {boolean} True if the 25-move rule applies
+   */
+  const inTwentyFiveMoveRule = () => {
+    if (history.length < KING_MOVE_LIMIT) {
+      return false
+    }
+    for (let i = history.length - KING_MOVE_LIMIT; i < history.length; i++) {
+      const { move } = history[i]
+      if (move.piece !== 'W' && move.piece !== 'B') return false
+      if (move.flags !== FLAGS.NORMAL) return false
+    }
+    return true
+  }
+
+  /**
    * Checks whether the game is drawn
    * @returns {boolean} True if drawn
    */
-  const inDraw = () => !gameOver() && (insufficientMaterial() || inThreefoldRepetition())
+  const inDraw = () => !gameOver() && (insufficientMaterial() || inThreefoldRepetition() || inTwentyFiveMoveRule())
 
   /**
    * Swaps the color from white to black or vice versa
@@ -1457,6 +1477,7 @@ function Draughts (fen) {
     inDraw,
     insufficient_material: insufficientMaterial,
     in_threefold_repetition: inThreefoldRepetition,
+    in_twenty_five_move_rule: inTwentyFiveMoveRule,
     turn: () => turn.toLowerCase(),
 
     // Move execution

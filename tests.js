@@ -696,3 +696,40 @@ describe('Regression Tests', () => {
   // Add regression test cases here as needed
   // These tests should cover specific bugs that have been found and fixed
 });
+/**
+ * Test suite for the 25-move rule (king-only moves, no captures)
+ */
+describe("25-Move Rule", () => {
+  const shuffle = (draughts, plies) => {
+    const cycle = [
+      { from: 46, to: 41 }, { from: 1, to: 6 },
+      { from: 41, to: 46 }, { from: 6, to: 1 }
+    ];
+    for (let i = 0; i < plies; i++) {
+      assert.isOk(draughts.move(cycle[i % 4]));
+    }
+  };
+
+  it("should not trigger before 50 plies", () => {
+    const draughts = new Draughts('W:WK46,K47:BK1,K2');
+    shuffle(draughts, 48);
+    assert.isFalse(draughts.in_twenty_five_move_rule());
+  });
+
+  it("should trigger after 50 king-only plies", () => {
+    const draughts = new Draughts('W:WK46,K47:BK1,K2');
+    shuffle(draughts, 50);
+    assert.isTrue(draughts.in_twenty_five_move_rule());
+    assert.isTrue(draughts.inDraw());
+  });
+
+  it("should be reset by a man move", () => {
+    const draughts = new Draughts('W:WK46,K47,36:BK1,K2');
+    draughts.move({ from: 36, to: 31 });
+    draughts.move({ from: 2, to: 7 });
+    shuffle(draughts, 48);
+    assert.isFalse(draughts.in_twenty_five_move_rule());
+    shuffle(draughts, 2);
+    assert.isTrue(draughts.in_twenty_five_move_rule());
+  });
+});

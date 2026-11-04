@@ -92,7 +92,7 @@ console.log(game.turn()); // 'w' (white to move)
 
 **`.inDraw()`**
 
-Returns `true` if the game is drawn. Draws are detected by threefold repetition and by insufficient material (one king per side).
+Returns `true` if the game is drawn. Draws are detected by threefold repetition, insufficient material (one king per side) and the 25-move rule (50 plies of king-only moves with no captures).
 
 ```js
 console.log(game.inDraw()); // false
