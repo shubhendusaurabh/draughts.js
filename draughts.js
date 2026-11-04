@@ -196,7 +196,6 @@ function Draughts (fen) {
 
     const checkedFen = validate_fen(fen)
     if (!checkedFen.valid) {
-      console.error('Fen Error', fen, checkedFen)
       return false
     }
 
@@ -542,7 +541,6 @@ function Draughts (fen) {
     // Handle custom setup
     if (headers.Setup === '1') {
       if (!('FEN' in headers) || !load(headers.FEN)) {
-        console.error('fen invalid')
         return false
       }
     } else {
@@ -612,7 +610,7 @@ function Draughts (fen) {
     tempMove.flags = moveType === '-' ? FLAGS.NORMAL : FLAGS.CAPTURE
     tempMove.piece = position.charAt(convertNumber(tempMove.from, 'internal'))
     
-    const legalMoves = convertMoves(getLegalMoves(tempMove.from), 'external')
+    const legalMoves = getLegalMoves(tempMove.from)
     
     // Find matching legal move
     for (const legalMove of legalMoves) {
@@ -627,7 +625,6 @@ function Draughts (fen) {
       }
     }
     
-    console.log(legalMoves, tempMove)
     return false
   }
 
@@ -637,6 +634,7 @@ function Draughts (fen) {
    * @returns {void}
    */
   const makeMove = (move) => {
+    const positionBefore = position
     move.piece = position.charAt(convertNumber(move.from, 'internal'))
     position = setCharAt(position, convertNumber(move.to, 'internal'), move.piece)
     position = setCharAt(position, convertNumber(move.from, 'internal'), 0)
@@ -661,7 +659,7 @@ function Draughts (fen) {
       position = setCharAt(position, convertNumber(move.to, 'internal'), move.piece.toUpperCase())
     }
     
-    push(move)
+    push(move, positionBefore)
     if (turn === BLACK) {
       moveNumber += 1
     }
@@ -1030,13 +1028,15 @@ function Draughts (fen) {
   /**
    * Adds a move to the game history
    * @param {MoveObject} move - Move to add to history
+   * @param {string} positionBefore - Internal position before the move was made
    * @returns {void}
    */
-  const push = (move) => {
+  const push = (move, positionBefore) => {
     history.push({
       move,
       turn,
-      moveNumber
+      moveNumber,
+      positionBefore
     })
   }
 
@@ -1080,13 +1080,38 @@ function Draughts (fen) {
   }
 
   /**
-   * Gets disambiguator for a move (placeholder function)
-   * @param {MoveObject} move - Move to get disambiguator for
-   * @returns {void} Currently not implemented
+   * Checks whether neither side can win: each side has exactly one king
+   * and no other pieces.
+   * @returns {boolean} True if material is insufficient
    */
-  const _get_disambiguator = (_move) => {
-    // TODO: Implementation needed
+  const insufficientMaterial = () => {
+    const counts = { w: 0, W: 0, b: 0, B: 0 }
+    for (const piece of position) {
+      if (piece in counts) counts[piece]++
+    }
+    return counts.w === 0 && counts.b === 0 && counts.W === 1 && counts.B === 1
   }
+
+  /**
+   * Checks whether the current position (with side to move) has occurred
+   * at least three times in the game history.
+   * @returns {boolean} True if threefold repetition
+   */
+  const inThreefoldRepetition = () => {
+    let occurrences = 1
+    for (const entry of history) {
+      if (entry.positionBefore === position && entry.turn === turn) {
+        occurrences++
+      }
+    }
+    return occurrences >= 3
+  }
+
+  /**
+   * Checks whether the game is drawn
+   * @returns {boolean} True if drawn
+   */
+  const inDraw = () => !gameOver() && (insufficientMaterial() || inThreefoldRepetition())
 
   /**
    * Swaps the color from white to black or vice versa
@@ -1390,7 +1415,7 @@ function Draughts (fen) {
    * @returns {number} Number of nodes at the given depth
    */
   const perft = (depth) => {
-    const moves = generate_moves({ legal: false })
+    const moves = generate_moves()
     let nodes = 0
 
     for (const move of moves) {
@@ -1429,7 +1454,9 @@ function Draughts (fen) {
 
     // Game state methods
     gameOver,
-    inDraw: () => false,
+    inDraw,
+    insufficient_material: insufficientMaterial,
+    in_threefold_repetition: inThreefoldRepetition,
     turn: () => turn.toLowerCase(),
 
     // Move execution
@@ -1468,7 +1495,7 @@ function Draughts (fen) {
     validate_fen,
     fen: generate_fen,
     pdn: generatePDN,
-    load_pdn: (_pdn, _options) => {}, // TODO: Implementation needed
+    load_pdn: (pdn, options) => parsePDN(pdn, options),
     parsePDN,
     header: (...args) => set_header(args),
 

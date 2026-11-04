@@ -279,8 +279,11 @@ describe("PDN Support", () => {
  */
 describe("Perft", () => {
   const perfts = [
-    // Add perft test cases here when available
-    // { fen: 'position', depth: 3, nodes: 1234 }
+    { fen: 'W:W31-50:B1-20', depth: 1, nodes: 9 },
+    { fen: 'W:W31-50:B1-20', depth: 2, nodes: 81 },
+    { fen: 'W:W31-50:B1-20', depth: 3, nodes: 658 },
+    { fen: 'W:W31-50:B1-20', depth: 4, nodes: 4265 },
+    { fen: 'W:W31-50:B1-20', depth: 5, nodes: 27117 }
   ];
 
   perfts.forEach(perft => {
@@ -332,8 +335,9 @@ describe("Single Square Move Generation", () => {
  */
 describe("Insufficient Material", () => {
   const positions = [
-    // Add insufficient material test cases here when available
-    // { fen: 'position', draw: true/false }
+    { fen: 'W:WK30:BK10', draw: true },
+    { fen: 'W:WK30,31:BK10', draw: false },
+    { fen: 'W:W31-50:B1-20', draw: false }
   ];
 
   positions.forEach(position => {
@@ -361,8 +365,15 @@ describe("Insufficient Material", () => {
  */
 describe("Threefold Repetition", () => {
   const positions = [
-    // Add threefold repetition test cases here when available
-    // { fen: 'position', moves: [...] }
+    {
+      fen: 'W:WK46,K47:BK1,K2',
+      moves: [
+        { from: 46, to: 41 }, { from: 1, to: 6 },
+        { from: 41, to: 46 }, { from: 6, to: 1 },
+        { from: 46, to: 41 }, { from: 1, to: 6 },
+        { from: 41, to: 46 }, { from: 6, to: 1 }
+      ]
+    }
   ];
 
   positions.forEach(position => {

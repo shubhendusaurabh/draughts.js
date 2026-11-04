@@ -92,7 +92,7 @@ console.log(game.turn()); // 'w' (white to move)
 
 **`.inDraw()`**
 
-Returns `true` if the game is drawn. *(Currently always returns false - TODO)*
+Returns `true` if the game is drawn. Draws are detected by threefold repetition and by insufficient material (one king per side).
 
 ```js
 console.log(game.inDraw()); // false
