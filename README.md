@@ -92,7 +92,14 @@ console.log(game.turn()); // 'w' (white to move)
 
 **`.inDraw()`**
 
-Returns `true` if the game is drawn. Draws are detected by threefold repetition, insufficient material (one king per side) and the 25-move rule (50 plies of king-only moves with no captures).
+Returns `true` if the game is drawn. Draws are detected by:
+
+- threefold repetition (`.in_threefold_repetition()`)
+- insufficient material: one king per side (`.insufficient_material()`)
+- the 25-move rule: 50 plies of king-only moves with no captures (`.in_twenty_five_move_rule()`)
+- the 16-move rule: a lone king against at most three pieces for 32 plies (`.in_sixteen_move_rule()`)
+
+Repetition and the move-count rules only look at moves made on this instance, so loading a mid-game FEN starts the count from that position.
 
 ```js
 console.log(game.inDraw()); // false
@@ -114,6 +121,8 @@ console.log(moves.length); // Number of legal moves
 // Get moves for a specific square
 const squareMoves = game.moves(35);
 ```
+
+Captures are mandatory for the whole side. If any piece can capture, `.moves(square)` returns only captures from that square, and an empty array for a square that cannot capture.
 
 **`.getLegalMoves(square)`**
 

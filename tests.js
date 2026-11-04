@@ -382,6 +382,17 @@ describe("Single Square Move Generation", () => {
     assert.deepEqual(summarize(draughts.moves(32)), [[32, 21, [27]]]);
     assert.strictEqual(draughts.moves().length, 2);
   });
+
+  it('should return no moves for a square that cannot capture when a capture exists', () => {
+    const draughts = new Draughts('W:W32,40:B27');
+    assert.deepEqual(summarize(draughts.moves(40)), []);
+    assert.deepEqual(summarize(draughts.moves(32)), [[32, 21, [27]]]);
+  });
+
+  it('should return normal moves for a square when no capture exists', () => {
+    const draughts = new Draughts('W:W40:B27');
+    assert.deepEqual(sortMoves(summarize(draughts.moves(40))), [[40, 34, []], [40, 35, []]]);
+  });
 });
 
 /**
@@ -786,5 +797,45 @@ describe("25-Move Rule", () => {
     assert.isFalse(draughts.in_twenty_five_move_rule());
     shuffle(draughts, 2);
     assert.isTrue(draughts.in_twenty_five_move_rule());
+  });
+});
+
+/**
+ * Test suite for the 16-move rule (lone king vs at most three pieces)
+ */
+describe("16-Move Rule", () => {
+  const shuffle = (draughts, plies) => {
+    const cycle = [
+      { from: 46, to: 41 }, { from: 1, to: 6 },
+      { from: 41, to: 46 }, { from: 6, to: 1 }
+    ];
+    for (let i = 0; i < plies; i++) {
+      assert.isOk(draughts.move(cycle[i % 4]));
+    }
+  };
+
+  it("should not trigger before 32 plies", () => {
+    const draughts = new Draughts('W:WK46,K47:BK1');
+    shuffle(draughts, 30);
+    assert.isFalse(draughts.in_sixteen_move_rule());
+  });
+
+  it("should trigger after 32 plies of lone king vs two kings", () => {
+    const draughts = new Draughts('W:WK46,K47:BK1');
+    shuffle(draughts, 32);
+    assert.isTrue(draughts.in_sixteen_move_rule());
+    assert.isTrue(draughts.inDraw());
+  });
+
+  it("should not apply when neither side has a lone king", () => {
+    const draughts = new Draughts('W:WK46,K47:BK1,K2');
+    shuffle(draughts, 32);
+    assert.isFalse(draughts.in_sixteen_move_rule());
+  });
+
+  it("should not apply when the stronger side has more than three pieces", () => {
+    const draughts = new Draughts('W:WK46,K47,K48,K49:BK1');
+    shuffle(draughts, 32);
+    assert.isFalse(draughts.in_sixteen_move_rule());
   });
 });

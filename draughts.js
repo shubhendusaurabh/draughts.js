@@ -131,6 +131,8 @@ function Draughts (fen) {
   const POSSIBLE_RESULTS = ['2-0', '0-2', '1-1', '0-0', '*', '1-0', '0-1']
   // 25 moves per side = 50 plies of king-only, non-capturing play
   const KING_MOVE_LIMIT = 50
+  // 16 moves per side = 32 plies in the end phase (lone king vs <= 3 pieces)
+  const SIXTEEN_MOVE_LIMIT = 32
   const FLAGS = {
     NORMAL: 'n',
     CAPTURE: 'c',
@@ -751,7 +753,11 @@ function Draughts (fen) {
     let moves = []
 
     if (square) {
-      moves = getLegalMoves(square)
+      // Captures are mandatory for the whole side: if any piece can capture,
+      // a square that cannot capture has no legal moves.
+      const squareMoves = getLegalMoves(square)
+      const mustCapture = getCaptures().length > 0
+      moves = mustCapture ? squareMoves.filter(move => move.takes && move.takes.length) : squareMoves
     } else {
       const captures = getCaptures()
       // Captures are mandatory - if available, return only captures
@@ -1128,10 +1134,40 @@ function Draughts (fen) {
   }
 
   /**
+   * Checks the 16-move rule for the end phase: one side has only a single
+   * king and the other side has at most three pieces. The game is drawn when
+   * this material situation has lasted for the last 16 moves by each side
+   * (32 plies). Only moves recorded in the history are counted.
+   * @returns {boolean} True if the 16-move rule applies
+   */
+  const inSixteenMoveRule = () => {
+    const isEndPhase = (pos) => {
+      const count = (re) => (pos.match(re) || []).length
+      const whiteMen = count(/w/g)
+      const whiteKings = count(/W/g)
+      const blackMen = count(/b/g)
+      const blackKings = count(/B/g)
+      const whiteTotal = whiteMen + whiteKings
+      const blackTotal = blackMen + blackKings
+      const lone = (kings, men) => kings === 1 && men === 0
+      return (lone(whiteKings, whiteMen) && blackTotal >= 1 && blackTotal <= 3) ||
+        (lone(blackKings, blackMen) && whiteTotal >= 1 && whiteTotal <= 3)
+    }
+
+    if (history.length < SIXTEEN_MOVE_LIMIT || !isEndPhase(position)) {
+      return false
+    }
+    for (let i = history.length - SIXTEEN_MOVE_LIMIT; i < history.length; i++) {
+      if (!isEndPhase(history[i].positionBefore)) return false
+    }
+    return true
+  }
+
+  /**
    * Checks whether the game is drawn
    * @returns {boolean} True if drawn
    */
-  const inDraw = () => !gameOver() && (insufficientMaterial() || inThreefoldRepetition() || inTwentyFiveMoveRule())
+  const inDraw = () => !gameOver() && (insufficientMaterial() || inThreefoldRepetition() || inTwentyFiveMoveRule() || inSixteenMoveRule())
 
   /**
    * Swaps the color from white to black or vice versa
@@ -1487,6 +1523,7 @@ function Draughts (fen) {
     insufficient_material: insufficientMaterial,
     in_threefold_repetition: inThreefoldRepetition,
     in_twenty_five_move_rule: inTwentyFiveMoveRule,
+    in_sixteen_move_rule: inSixteenMoveRule,
     turn: () => turn.toLowerCase(),
 
     // Move execution
