@@ -1,6 +1,6 @@
 {
   "name": "draughts",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "A javascript draughts library for move generation/validation, piece placement/movement and draw detection",
   "main": "draughts.js",
   "devDependencies": {
